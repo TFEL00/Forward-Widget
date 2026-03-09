@@ -1,7 +1,7 @@
 {
   "title": "TFEL's自用模块",
   "description": "自用模块合集",
-  "icon": "https://github.com/TFEL00/Forward-Widget/raw/main/icon.png",
+  "icon": "https://assets.vvebo.vip/scripts/icon.png",
   "widgets": [
    {
       "id": "forward.combined.media.lists",
