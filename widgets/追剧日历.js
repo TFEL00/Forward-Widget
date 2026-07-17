@@ -1,7 +1,7 @@
 // 追剧日历组件
 WidgetMetadata = {
     id: "zhuijurili",
-    title: "追剧日历(今/明日播出、周历、各项榜单、今日推荐)",
+    title: "追剧日历",
     modules: [
         {
             id: "todayPlay",
