@@ -379,8 +379,6 @@ async function fetchDefaultData(sort_by) {
 
     return tmdbIds;
 }
-    return [];
-}
 
 async function fetchOtherData(typ, sort_by) {
     const whichDay = sort_by.includes("今天") ? "today" : "tomorrow";
