@@ -332,7 +332,14 @@ async function fetchImdbItems(scItems) {
 
 async function fetchDefaultData(sort_by) {
     const url_prefix = "https://zjrl-1318856176.cos.accelerate.myqcloud.com";
-    const url = `${url_prefix}/${suffixMap[sort_by]}.json`;
+    const suffix = suffixMap[sort_by];
+
+    if (!suffix) {
+        console.log("未找到对应的数据文件:", sort_by);
+        return [];
+    }
+
+    const url = `${url_prefix}/${suffix}.json`;
 
     const response = await Widget.http.get(url, {
         headers: {
@@ -348,29 +355,31 @@ async function fetchDefaultData(sort_by) {
         return [];
     }
 
-    let data;
     let items = [];
 
     if (sort_by === "今日推荐") {
-        data = response.data.find(item => item.type === "1s");
+        const data = response.data.find(item => item.type === "1s");
         items = data?.content || [];
     } else if (areaTypes.includes(sort_by)) {
-        data = response.data.find(item => item.type === "category");
+        const data = response.data.find(item => item.type === "category");
         items =
             data?.content?.find(item => item.title === sort_by)?.data || [];
+    } else if (suffix === "home1") {
+        // home1.json 中各榜单没有 title，需要按照固定顺序取数据
+        const index = API_SUFFIXES.home1.indexOf(sort_by);
+        const data = index >= 0 ? response.data[index] : null;
+        items = data?.content || [];
     } else {
-        data =
-            response.data.find(item => item.title === sort_by) ||
-            response.data.find(item => item.type === "normal");
-
+        const data = response.data.find(item => item.title === sort_by);
         items = data?.content || [];
     }
 
     if (!Array.isArray(items)) {
-        console.log("无效的剧集数据:", sort_by, data);
+        console.log("无效的剧集数据:", sort_by, items);
         return [];
     }
 
+    console.log("当前榜单:", sort_by);
     console.log("items:", items);
 
     const tmdbIds = await fetchImdbItems(items);
