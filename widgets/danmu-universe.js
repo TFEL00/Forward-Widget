@@ -11550,7 +11550,7 @@ function sv(e, t) {
 WidgetMetadata = {
     id: "baranwang.danmu.universe",
     title: "通用弹幕",
-    description: "通用弹幕插件，支持爱优腾、哔站、人人等平台",
+    description: "通用弹幕插件，支持爱优腾、B站、人人等平台",
     author: "Baran",
     version: "0.15.8",
     site: "https://github.com/baranwang/forward-widget/tree/main/apps/danmu-universe",
