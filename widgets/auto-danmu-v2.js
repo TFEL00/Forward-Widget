@@ -18131,10 +18131,10 @@ async function getSegmentComment(segment, queryFormat) {
 var wv = true ? "1.18.8" : Globals.VERSION;
 WidgetMetadata = {
   id: "forward.auto.danmu2",
-  title: "\u81EA\u52A8\u94FE\u63A5\u5F39\u5E55v2",
+  title: "自动弹幕",
   version: wv,
   requiredVersion: "0.0.2",
-  description: "\u81EA\u52A8\u83B7\u53D6\u64AD\u653E\u94FE\u63A5\u5E76\u4ECE\u670D\u52A1\u5668\u83B7\u53D6\u5F39\u5E55\u3010\u4E94\u6298\u7801\uFF1ACHEAP.5;\u4E03\u6298\u7801\uFF1ACHEAP\u3011",
+  description: "自动获取播放链接并从服务器获取弹幕",
   author: "huangxd",
   site: "https://github.com/huangxd-/ForwardWidgets",
   globalParams: [
