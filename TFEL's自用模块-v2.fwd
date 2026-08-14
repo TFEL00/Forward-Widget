@@ -4,9 +4,9 @@
   "icon": "https://assets.vvebo.vip/scripts/icon.png",
   "widgets": [
     {
-      "id": "tfel.mediahub.pro",
-      "title": "影视榜单Pro",
-      "description": "影视、动漫、综艺聚合",
+      "id": "TFEL.Mediahub.Pro",
+      "title": "影视榜单",
+      "description": "聚合影视、动漫、综艺等众多平台榜单",
       "requiredVersion": "0.0.1",
       "version": "1.0.0",
       "author": "TFEL",
