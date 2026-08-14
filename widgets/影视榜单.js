@@ -437,7 +437,7 @@ async function loadLiteDouban(params = {}) {
 const PlatformTheaterUtils = {
     emptyTips: [{ id: "empty", type: "text", title: "加载失败", description: "请检查网络连接" }],
     async fetch(filename) {
-        const url = `https://raw.githubusercontent.com/MakkaPakka518/List/refs/heads/main/data/${filename}`;
+        const url = `https://raw.githubusercontent.com/TFEL00/Forward-Widget/main/data/${filename}`;
         try {
             const resp = await Widget.http.get(url, { decodable: true });
             if (!resp?.data) return this.emptyTips;
