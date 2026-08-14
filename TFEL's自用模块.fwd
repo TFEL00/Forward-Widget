@@ -3,15 +3,15 @@
   "description": "自用模块合集",
   "icon": "https://assets.vvebo.vip/scripts/icon.png",
   "widgets": [
-   {
-      "id": "forward.combined.media.lists",
-      "title": "影视榜单",
-      "description": "影视动画榜单",
-      "requiredVersion": "0.0.2",
-      "version": "1.5.0",
-      "author": "𝓑𝓾𝓽𝓽𝓮𝓻𝓯𝓵𝔂",
-      "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/影视榜单.js"
-    },    
+    {
+      "id": "tfel.mediahub.pro",
+      "title": "影视榜单Pro",
+      "description": "影视、动漫、综艺聚合",
+      "requiredVersion": "0.0.1",
+      "version": "1.0.0",
+      "author": "TFEL",
+      "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/mediahub-pro.js"
+    },
     {
       "id": "ultimate_media_hub_pro_ui",
       "title": "全球影视分流聚合",
@@ -121,22 +121,22 @@
       "url": "https://fwd.luvme.indevs.in/api/download?path=danmuapipro.js"
     },
     {
-      "id": "danmu-universe",
+      "id": "baranwang.danmu.universe",
       "title": "通用弹幕",
-      "description": "通用弹幕插件，支持腾讯、优酷、爱奇艺、bilibili、人人视频等平台",
+      "description": "通用弹幕插件，支持腾讯、优酷、爱奇艺、哔哩哔哩、人人视频等平台",
       "requiredVersion": "0.0.2",
-      "version": "0.15.1",
+      "version": "0.15.8",
       "author": "Baran",
-      "url": "https://unpkg.com/@forward-widget/danmu-universe"
+      "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/danmu-universe.js"
     },
     {
-      "id": "forward.auto.danmu",
+      "id": "forward.auto.danmu2",
       "title": "自动链接弹幕v2",
-      "description": "自动获取播放链接并从服务器获取弹幕【30% off code：CHEAP】",
+      "description": "自动获取播放链接并从服务器获取弹幕",
       "requiredVersion": "0.0.2",
-      "version": "1.15.6",
+      "version": "1.18.8",
       "author": "huangxd",
-      "url": "https://raw.githubusercontent.com/huangxd-/ForwardWidgets/refs/heads/main/widgets/danmu_auto.js"
+      "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/auto-danmu-v2.js"
     }
   ]
 }
