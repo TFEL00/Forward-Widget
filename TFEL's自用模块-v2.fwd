@@ -15,7 +15,7 @@
     {
       "id": "baranwang.danmu.universe",
       "title": "通用弹幕",
-      "description": "通用弹幕插件，支持爱优腾、哔站、人人等平台",
+      "description": "通用弹幕插件，支持爱优腾、B站、人人等平台",
       "requiredVersion": "0.0.2",
       "version": "0.15.8",
       "author": "Baran",
