@@ -54,9 +54,9 @@ function buildItem({ id, tmdbId, type, title, date, poster, backdrop, rating, ge
 // 2. 终极聚合版 Widget Metadata (史诗七大阵营)
 // =========================================================================
 var WidgetMetadata = {
-    id: "TFEL‘s Mediahub Pro",
-    title: "影视榜单Pro",
-    description: "影视、动漫、综艺聚合",
+    id: "TFEL.Mediahub.Pro",
+    title: "影视榜单",
+    description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
     version: "1.0.0",
     requiredVersion: "0.0.1",
