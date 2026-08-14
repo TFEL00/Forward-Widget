@@ -15,7 +15,7 @@
     {
       "id": "baranwang.danmu.universe",
       "title": "通用弹幕",
-      "description": "通用弹幕插件，支持腾讯、优酷、爱奇艺、哔哩哔哩、人人视频等平台",
+      "description": "通用弹幕插件，支持爱优腾、哔站、人人等平台",
       "requiredVersion": "0.0.2",
       "version": "0.15.8",
       "author": "Baran",
@@ -23,7 +23,7 @@
     },
     {
       "id": "forward.auto.danmu2",
-      "title": "自动链接弹幕v2",
+      "title": "自动弹幕",
       "description": "自动获取播放链接并从服务器获取弹幕",
       "requiredVersion": "0.0.2",
       "version": "1.18.8",
