@@ -488,8 +488,45 @@ const CALENDAR_SUFFIX = {
     "华语热门": "home0", "本季新番": "home0", "今日推荐": "home0"
 };
 
+const CALENDAR_TMDB_CACHE = {};
+const CALENDAR_TMDB_PENDING = {};
+const CALENDAR_TMDB_CACHE_TTL = 6 * 60 * 60 * 1000;
+
+function calendarTmdbCacheKey(id, mediaType) {
+    return `calendar_tmdb_${mediaType}_${id}`;
+}
+
 async function fetchCalendarTmdb(id, mediaType) {
-    try { return await Widget.tmdb.get(`${mediaType}/${id}`); } catch (e) { return null; }
+    const key = calendarTmdbCacheKey(id, mediaType);
+    const now = Date.now();
+    const memoryHit = CALENDAR_TMDB_CACHE[key];
+    if (memoryHit && now - memoryHit.ts < CALENDAR_TMDB_CACHE_TTL) return memoryHit.data;
+    try {
+        if (Widget.storage && typeof Widget.storage.get === "function") {
+            const stored = Widget.storage.get(key);
+            if (stored && stored.data && now - stored.ts < CALENDAR_TMDB_CACHE_TTL) {
+                CALENDAR_TMDB_CACHE[key] = stored;
+                return stored.data;
+            }
+        }
+    } catch (e) {}
+    if (CALENDAR_TMDB_PENDING[key]) return CALENDAR_TMDB_PENDING[key];
+    CALENDAR_TMDB_PENDING[key] = (async () => {
+        try {
+            const data = await Widget.tmdb.get(`${mediaType}/${id}`);
+            const packed = { ts: Date.now(), data };
+            CALENDAR_TMDB_CACHE[key] = packed;
+            try {
+                if (Widget.storage && typeof Widget.storage.set === "function") Widget.storage.set(key, packed);
+            } catch (e) {}
+            return data;
+        } catch (e) {
+            return null;
+        } finally {
+            delete CALENDAR_TMDB_PENDING[key];
+        }
+    })();
+    return CALENDAR_TMDB_PENDING[key];
 }
 
 async function mapCalendarItems(sourceItems) {
