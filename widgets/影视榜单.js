@@ -154,21 +154,6 @@ var WidgetMetadata = {
             ]
         },
 
-        // ---------------- 大栏目 2：全球影剧类别 ----------------
-        {
-            title: "全球影剧类别",
-            functionName: "loadGenreRank",
-            type: "video",
-            cacheDuration: 3600,
-            params: [
-                { name: "sort_by", title: "影视类型", type: "enumeration", value: "all", enumOptions: [ { title: "全部", value: "all" }, { title: "电影", value: "movie" }, { title: "剧集", value: "tv" } ] },
-                { name: "genre", title: "题材流派", type: "enumeration", value: "all", enumOptions: [ { title: "全部题材 (All)", value: "all" }, { title: "科幻 (Sci-Fi)", value: "scifi" }, { title: "悬疑 (Mystery)", value: "mystery" }, { title: "恐怖 (Horror)", value: "horror" }, { title: "犯罪 (Crime)", value: "crime" }, { title: "动作 (Action)", value: "action" }, { title: "喜剧 (Comedy)", value: "comedy" }, { title: "爱情 (Romance)", value: "romance" }, { title: "剧情 (Drama)", value: "drama" }, { title: "奇幻 (Fantasy)", value: "fantasy" }, { title: "动画 (Animation)", value: "animation" }, { title: "纪录片 (Documentary)", value: "documentary" } ] },
-                { name: "region", title: "国家/地区", type: "enumeration", value: "all", enumOptions: [ { title: "全球 (所有国家)", value: "all" }, { title: "中国大陆", value: "cn" }, { title: "中国香港", value: "hk" }, { title: "中国台湾", value: "tw" }, { title: "港台 (香港+台湾)", value: "hktw" }, { title: "日本", value: "jp" }, { title: "韩国", value: "kr" }, { title: "日韩合集", value: "jpkr" }, { title: "泰国", value: "th" }, { title: "新加坡", value: "sg" }, { title: "马来西亚", value: "my" }, { title: "印度", value: "in" }, { title: "亚太大区", value: "apac" }, { title: "美国", value: "us" }, { title: "英国", value: "gb" }, { title: "德国", value: "de" }, { title: "瑞典", value: "se" }, { title: "欧洲全境", value: "europe" }, { title: "西班牙", value: "es" }, { title: "墨西哥", value: "mx" }, { title: "西语/拉丁美洲", value: "latin" } ] },
-                { name: "order_rule", title: "排序规则", type: "enumeration", value: "popularity", enumOptions: [ { title: "热门趋势", value: "popularity" }, { title: "评分最高", value: "rating" }, { title: "最新上线", value: "time" } ] },
-                { name: "page", title: "页码", type: "page", startPage: 1 }
-            ]
-        },
-
         // ---------------- 大栏目 1：二次元全境聚合 ----------------
         {
             title: "动漫全境聚合",
@@ -224,6 +209,21 @@ var WidgetMetadata = {
             ]
         },
 
+        // ---------------- 大栏目 2：全球影剧类别 ----------------
+        {
+            title: "全球影剧类别",
+            functionName: "loadGenreRank",
+            type: "video",
+            cacheDuration: 3600,
+            params: [
+                { name: "sort_by", title: "影视类型", type: "enumeration", value: "all", enumOptions: [ { title: "全部", value: "all" }, { title: "电影", value: "movie" }, { title: "剧集", value: "tv" } ] },
+                { name: "genre", title: "题材流派", type: "enumeration", value: "all", enumOptions: [ { title: "全部题材 (All)", value: "all" }, { title: "科幻 (Sci-Fi)", value: "scifi" }, { title: "悬疑 (Mystery)", value: "mystery" }, { title: "恐怖 (Horror)", value: "horror" }, { title: "犯罪 (Crime)", value: "crime" }, { title: "动作 (Action)", value: "action" }, { title: "喜剧 (Comedy)", value: "comedy" }, { title: "爱情 (Romance)", value: "romance" }, { title: "剧情 (Drama)", value: "drama" }, { title: "奇幻 (Fantasy)", value: "fantasy" }, { title: "动画 (Animation)", value: "animation" }, { title: "纪录片 (Documentary)", value: "documentary" } ] },
+                { name: "region", title: "国家/地区", type: "enumeration", value: "all", enumOptions: [ { title: "全球 (所有国家)", value: "all" }, { title: "中国大陆", value: "cn" }, { title: "中国香港", value: "hk" }, { title: "中国台湾", value: "tw" }, { title: "港台 (香港+台湾)", value: "hktw" }, { title: "日本", value: "jp" }, { title: "韩国", value: "kr" }, { title: "日韩合集", value: "jpkr" }, { title: "泰国", value: "th" }, { title: "新加坡", value: "sg" }, { title: "马来西亚", value: "my" }, { title: "印度", value: "in" }, { title: "亚太大区", value: "apac" }, { title: "美国", value: "us" }, { title: "英国", value: "gb" }, { title: "德国", value: "de" }, { title: "瑞典", value: "se" }, { title: "欧洲全境", value: "europe" }, { title: "西班牙", value: "es" }, { title: "墨西哥", value: "mx" }, { title: "西语/拉丁美洲", value: "latin" } ] },
+                { name: "order_rule", title: "排序规则", type: "enumeration", value: "popularity", enumOptions: [ { title: "热门趋势", value: "popularity" }, { title: "评分最高", value: "rating" }, { title: "最新上线", value: "time" } ] },
+                { name: "page", title: "页码", type: "page", startPage: 1 }
+            ]
+        },
+
         // ---------------- 大栏目 7：平台分流片库 ----------------
         {
             title: "平台公司片库",
@@ -243,32 +243,6 @@ var WidgetMetadata = {
             ]
         },
 
-        // ---------------- 大栏目 6：串流平台TOP10 (FlixPatrol) ----------------
-        {
-            title: "流媒体TOP10",
-            functionName: "loadOfficialTop10",
-            type: "video", 
-            cacheDuration: 3600,
-            params: [
-                {
-                    name: "sort_by", title: "榜单地区", type: "enumeration", value: "united-states",
-                    enumOptions: [
-                        { title: "美国", value: "united-states" }, { title: "韩国", value: "south-korea" }, { title: "台湾", value: "taiwan" }, { title: "香港", value: "hong-kong" }, { title: "日本", value: "japan" }, { title: "英国", value: "united-kingdom" }, { title: "全球", value: "world" }
-                    ]
-                },
-                {
-                    name: "platform", title: "流媒体平台", type: "enumeration", value: "netflix",
-                    enumOptions: [
-                        { title: "Netflix", value: "netflix" }, { title: "HBO", value: "hbo" }, { title: "Disney+", value: "disney" }, { title: "Apple TV+", value: "apple-tv" }, { title: "Amazon Prime", value: "amazon-prime" }
-                    ]
-                },
-                {
-                    name: "mediaType", title: "榜单类型", type: "enumeration", value: "tv",
-                    enumOptions: [ { title: "剧集", value: "tv" }, { title: "电影", value: "movie" } ]
-                },
-                { name: "page", title: "页码", type: "page", startPage: 1 }
-            ]
-        }
     ]
 };
 
@@ -975,102 +949,6 @@ async function fetchDoubanAndMap(tag, type, page) {
     }
 }
 
-async function loadOfficialTop10(params = {}) {
-    const region = params.sort_by || "united-states"; 
-    const platform = params.platform || "netflix";
-    const mediaType = params.mediaType || "tv";
-
-    let titles = await fetchFlixPatrolData(platform, region, mediaType);
-
-    if (titles.length === 0) {
-        return await fetchTmdbFallback_Top10(platform, region, mediaType);
-    }
-
-    const searchPromises = titles.slice(0, 10).map((title, index) => 
-        searchTmdbForTop10(title, mediaType, index + 1)
-    );
-
-    const results = await Promise.all(searchPromises);
-    const finalItems = results.filter(r => r !== null);
-
-    if (finalItems.length === 0) {
-        return [{ id: "error", title: "匹配失败", description: "获取了榜单但TMDB无数据", type: "text" }];
-    }
-    return finalItems;
-}
-
-async function fetchFlixPatrolData(platform, region, mediaType) {
-    const url = `https://flixpatrol.com/top10/${platform}/${region}/`;
-    try {
-        const res = await Widget.http.get(url, { 
-            headers: { "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1" } 
-        });
-        const html = typeof res === 'string' ? res : (res.data || "");
-        const $ = Widget.html.load(html);
-        const tables = $('.card-table tbody');
-        if (tables.length === 0) return [];
-        
-        //  同步：修正后的平台表格索引逻辑
-        let tableIndex = 0;
-        if (platform === "disney") {
-            tableIndex = mediaType === "all" ? 0 : (mediaType === "movie" ? 1 : 2);
-        } else if (platform === "hbo") {
-            tableIndex = mediaType === "movie" ? 0 : 1;
-        } else {
-            tableIndex = mediaType === "movie" ? 0 : (mediaType === "tv" ? 1 : 2);
-        }
-
-        if (tableIndex >= tables.length) tableIndex = tables.length - 1;
-
-        const targetTable = tables.eq(tableIndex);
-        const titles = [];
-        targetTable.find('tr').each((i, el) => {
-            if (i >= 10) return; 
-            const textLink = $(el).find('a.hover\\:underline').text().trim();
-            const textTd = $(el).find('td').eq(2).text().trim();
-            const finalTitle = textLink || textTd;
-            if (finalTitle && finalTitle.length > 1) {
-                titles.push(finalTitle.split('(')[0].trim());
-            }
-        });
-        return titles;
-    } catch (e) { return []; }
-}
-
-async function searchTmdbForTop10(queryTitle, mediaType, rank) {
-    try {
-        const data = await Widget.tmdb.get(`/search/${mediaType}`, { params: { query: queryTitle.trim(), language: "zh-CN", page: 1 } });
-        if (data && data.results && data.results.length > 0) {
-            let item = data.results[0];
-            const date = item.first_air_date || item.release_date || ""; 
-            
-            return {
-                id: String(item.id), tmdbId: parseInt(item.id), type: "tmdb", mediaType: mediaType, title: item.name || item.title,
-                releaseDate: date, year: date.substring(0, 4), genreTitle: getGlobalGenreText(item.genre_ids),
-                subTitle: `TOP ${rank}`, posterPath: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : "",
-                backdropPath: item.backdrop_path ? `https://image.tmdb.org/t/p/w780${item.backdrop_path}` : "",
-                description: `TOP ${rank}\n${item.overview || "暂无简介"}`
-            };
-        }
-    } catch (e) {} return null;
-}
-
-async function fetchTmdbFallback_Top10(platform, region, mediaType) {
-    const providerMap = { "netflix": "8", "disney": "337", "hbo": "1899|118", "apple-tv": "350", "amazon-prime": "119" };
-    const regionMap = { "united-states": "US", "south-korea": "KR", "taiwan": "TW", "hong-kong": "HK", "japan": "JP", "united-kingdom": "GB", "world": "US" };
-    try {
-        const data = await Widget.tmdb.get(`/discover/${mediaType}`, { params: { watch_region: regionMap[region] || "US", with_watch_providers: providerMap[platform] || "8", sort_by: "popularity.desc", page: 1, language: "zh-CN" } });
-        return (data.results || []).slice(0, 10).map((item, index) => {
-            const date = item.first_air_date || item.release_date || ""; 
-            return {
-                id: String(item.id), tmdbId: parseInt(item.id), type: "tmdb", mediaType: mediaType, title: item.name || item.title,
-                releaseDate: date, year: date.substring(0, 4), genreTitle: getGlobalGenreText(item.genre_ids), subTitle: `TOP ${index + 1}`,
-                posterPath: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : "", backdropPath: item.backdrop_path ? `https://image.tmdb.org/t/p/w780${item.backdrop_path}` : "",
-                description: `TOP ${index + 1}\n${item.overview || "暂无简介"}`
-            };
-        });
-    } catch (e) { return []; }
-}
 
 const GENRE_MAP = {
     16: "动画", 10759: "动作冒险", 35: "喜剧", 18: "剧情", 14: "奇幻", 
