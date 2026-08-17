@@ -8,9 +8,9 @@
       "title": "影视榜单",
       "description": "聚合影视、动漫、综艺等众多平台榜单",
       "requiredVersion": "0.0.1",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "author": "TFEL",
-      "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/影视榜单.js"
+      "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/mediahub-pro.js"
     },
     {
       "id": "baranwang.danmu.universe",
