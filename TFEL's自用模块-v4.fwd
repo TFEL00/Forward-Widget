@@ -1,0 +1,34 @@
+{
+  "title": "TFEL's自用模块",
+  "description": "自用模块合集",
+  "icon": "https://assets.vvebo.vip/scripts/icon.png",
+  "widgets": [
+    {
+      "id": "TFEL.Mediahub.Pro",
+      "title": "影视榜单",
+      "description": "聚合影视、动漫、综艺等众多平台榜单",
+      "requiredVersion": "0.0.1",
+      "version": "1.0.1",
+      "author": "TFEL",
+      "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/%E5%BD%B1%E8%A7%86%E6%A6%9C%E5%8D%95.js"
+    },
+    {
+      "id": "baranwang.danmu.universe",
+      "title": "通用弹幕",
+      "description": "通用弹幕插件，支持爱优腾、B站、人人等平台",
+      "requiredVersion": "0.0.2",
+      "version": "0.15.8",
+      "author": "Baran",
+      "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/danmu-universe.js"
+    },
+    {
+      "id": "forward.auto.danmu2",
+      "title": "自动弹幕",
+      "description": "自动获取播放链接并从服务器获取弹幕",
+      "requiredVersion": "0.0.2",
+      "version": "1.18.8",
+      "author": "huangxd",
+      "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/auto-danmu-v2.js"
+    }
+  ]
+}
