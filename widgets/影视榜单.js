@@ -437,7 +437,7 @@ async function loadLiteDouban(params = {}) {
 const PlatformTheaterUtils = {
     emptyTips: [{ id: "empty", type: "text", title: "加载失败", description: "请检查网络连接" }],
     async fetch(filename) {
-        const url = `https://raw.githubusercontent.com/TFEL00/Forward-Widget/main/data/${filename}`;
+        const url = `https://raw.githubusercontent.com/MakkaPakka518/List/refs/heads/main/data/${filename}`;
         try {
             const resp = await Widget.http.get(url, { decodable: true });
             if (!resp?.data) return this.emptyTips;
@@ -1256,8 +1256,8 @@ function buildReleaseTrackerItem(item, mediaType) {
         type: "tmdb",
         mediaType,
         title,
-        genreTitle: `${getReleaseTrackerGenre(item.genre_ids)} 热度:${popularity}`,
-        subTitle: `${getReleaseTrackerGenre(item.genre_ids)} 热度:${popularity}`,
+        genreTitle: getReleaseTrackerGenre(item.genre_ids),
+        subTitle: getReleaseTrackerGenre(item.genre_ids),
         posterPath: item.poster_path,
         backdropPath: item.backdrop_path,
         description: `${dateLabel} |  评分: ${score}\n${item.overview || "暂无简介"}`,
