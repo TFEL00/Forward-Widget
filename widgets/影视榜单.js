@@ -58,7 +58,7 @@ var WidgetMetadata = {
     title: "影视榜单",
     description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
-    version: "1.0.0",
+    version: "1.0.1",
     requiredVersion: "0.0.1",
     site: "https://t.me/TFEL000",
     
@@ -506,6 +506,9 @@ async function mapCalendarItems(sourceItems) {
             releaseDate: tmdb.release_date || tmdb.first_air_date,
             backdropPath: tmdb.backdrop_path,
             posterPath: tmdb.poster_path,
+            genreTitle: Array.isArray(tmdb.genres) && tmdb.genres.length
+                ? tmdb.genres.slice(0, 2).map(g => g.name).join(" / ")
+                : getGlobalGenreText(tmdb.genre_ids),
             rating: tmdb.vote_average
         };
     }));
