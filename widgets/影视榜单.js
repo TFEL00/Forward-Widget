@@ -227,33 +227,21 @@ var WidgetMetadata = {
         // ---------------- 大栏目 7：平台分流片库 ----------------
         {
             title: "平台分流片库",
-            functionName: "loadPlatformMatrix",
-            type: "video", 
+            functionName: "loadPlatformHub",
+            type: "video",
             cacheDuration: 3600,
             params: [
-                {
-                    name: "sort_by", title: "内容分类", type: "enumeration", value: "tv_drama",
-                    enumOptions: [ 
-                        { title: "电视剧", value: "tv_drama" }, 
-                        { title: "综艺", value: "tv_variety" }, 
-                        { title: "动漫", value: "tv_anime" }, 
-                        { title: "电影", value: "movie" } 
-                    ]
-                },
-                {
-                    name: "platform", title: "播出平台", type: "enumeration", value: "2007",
-                    enumOptions: [
-                        { title: "腾讯视频", value: "2007" }, { title: "爱奇艺", value: "1330" }, { title: "优酷", value: "1419" }, { title: "芒果TV", value: "1631" }, { title: "Bilibili", value: "1605" }, { title: "Netflix", value: "213" }, { title: "Disney+", value: "2739" }, { title: "HBO", value: "49" }, { title: "Apple TV+", value: "2552" }
-                    ]
-                },
-                {
-                    name: "sort", title: "排序", type: "enumeration", value: "popularity.desc",
-                    enumOptions: [ { title: "热度最高", value: "popularity.desc" }, { title: "最新首播", value: "first_air_date.desc" }, { title: "评分最高", value: "vote_average.desc" } ]
-                },
-                { name: "page", title: "页码", type: "page", startPage: 1 }
+                { name: "hub_mode", title: "筛选模式", type: "enumeration", value: "network", enumOptions: [ { title: "播出平台", value: "network" }, { title: "出品公司", value: "company" } ] },
+                { name: "with_networks", title: "播出平台", type: "enumeration", value: "2007", belongTo: { paramName: "hub_mode", value: ["network"] }, enumOptions: [ { title: "腾讯视频", value: "2007" }, { title: "爱奇艺", value: "1330" }, { title: "优酷", value: "1419" }, { title: "Bilibili", value: "1605" }, { title: "芒果TV", value: "1631" }, { title: "Netflix", value: "213" }, { title: "Disney+", value: "2739" }, { title: "HBO", value: "49" }, { title: "HBO Max", value: "3186" }, { title: "Apple TV+", value: "2552" }, { title: "Hulu", value: "453" }, { title: "Amazon Prime Video", value: "1024" }, { title: "FOX", value: "19" }, { title: "Paramount+", value: "4330" }, { title: "TV Tokyo", value: "94" }, { title: "BBC One", value: "332" }, { title: "BBC Two", value: "295" }, { title: "NBC", value: "6" }, { title: "AMC+", value: "174" }, { title: "We TV", value: "3732" }, { title: "Viu TV", value: "2146" }, { title: "TVB", value: "48" } ] },
+                { name: "tv_genres", title: "内容类型", type: "enumeration", value: "", belongTo: { paramName: "hub_mode", value: ["network"] }, enumOptions: [ { title: "全部类型", value: "" }, { title: "犯罪", value: "80" }, { title: "动画", value: "16" }, { title: "喜剧", value: "35" }, { title: "剧情", value: "18" }, { title: "家庭", value: "10751" }, { title: "悬疑", value: "9648" }, { title: "真人秀", value: "10764" }, { title: "脱口秀", value: "10767" }, { title: "纪录片", value: "99" }, { title: "动作与冒险", value: "10759" }, { title: "科幻与奇幻", value: "10765" }, { title: "战争与政治", value: "10768" } ] },
+                { name: "with_companies", title: "出品公司", type: "enumeration", value: "3", belongTo: { paramName: "hub_mode", value: ["company"] }, enumOptions: [ { title: "皮克斯 Pixar", value: "3" }, { title: "DC Universe", value: "128064" }, { title: "Disney", value: "2" }, { title: "Warner Bros", value: "174" }, { title: "Columbia", value: "5" }, { title: "Sony", value: "34" }, { title: "Universal", value: "33" }, { title: "Paramount", value: "4" }, { title: "20th Century", value: "25" }, { title: "Marvel", value: "420" }, { title: "Toho", value: "882" }, { title: "中国电影集团公司", value: "14714" }, { title: "BBC", value: "3324" }, { title: "A24", value: "41077" }, { title: "Blumhouse", value: "3172" }, { title: "Working Title Films", value: "10163" } ] },
+                { name: "movie_genres", title: "内容类型", type: "enumeration", value: "", belongTo: { paramName: "hub_mode", value: ["company"] }, enumOptions: [ { title: "全部类型", value: "" }, { title: "冒险", value: "12" }, { title: "剧情", value: "18" }, { title: "动作", value: "28" }, { title: "动画", value: "16" }, { title: "历史", value: "36" }, { title: "喜剧", value: "35" }, { title: "奇幻", value: "14" }, { title: "家庭", value: "10751" }, { title: "恐怖", value: "27" }, { title: "悬疑", value: "9648" }, { title: "惊悚", value: "53" }, { title: "战争", value: "10752" }, { title: "爱情", value: "10749" }, { title: "犯罪", value: "80" }, { title: "科幻", value: "878" }, { title: "西部", value: "37" }, { title: "音乐", value: "10402" }, { title: "电视电影", value: "10770" } ] },
+                { name: "air_status", title: "上映状态", type: "enumeration", value: "released", enumOptions: [ { title: "已上映", value: "released" }, { title: "未上映", value: "upcoming" }, { title: "全部", value: "" } ] },
+                { name: "sort_by", title: "排序方式", type: "enumeration", value: "date_desc", enumOptions: [ { title: "上映时间降序", value: "date_desc" }, { title: "上映时间升序", value: "date_asc" }, { title: "人气最高", value: "popularity.desc" }, { title: "评分最高", value: "vote_average.desc" }, { title: "最多投票", value: "vote_count.desc" } ] },
+                { name: "page", title: "页码", type: "page" },
+                { name: "language", title: "语言", type: "language", value: "zh-CN" }
             ]
         },
-
 
         // ---------------- 大栏目 6：串流平台TOP10 (FlixPatrol) ----------------
         {
@@ -288,46 +276,51 @@ var WidgetMetadata = {
 // 3. 路由与各分类底层
 // =========================================================================
 
-async function loadPlatformMatrix(params = {}) {
-    const category = params.sort_by || "tv_drama";
-    const platformId = params.platform || "2007";
-    const sort = params.sort || "popularity.desc";
-    const page = params.page || 1;
+function platformHubDate() {
+    const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    return `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,"0")}-${String(now.getUTCDate()).padStart(2,"0")}`;
+}
 
-    const foreignPlatforms = ["213", "2739", "49", "2552"];
-    if (category === "movie" && !foreignPlatforms.includes(platformId)) return page === 1 ? [{ id: "empty", type: "text", title: "暂不支持国内平台电影", description: "请切换为剧集或国外平台" }] : [];
+function platformHubSort(value, fallback) {
+    return { date_desc: fallback, date_asc: fallback.replace(".desc", ".asc"), "popularity.desc": "popularity.desc", "vote_average.desc": "vote_average.desc", "vote_count.desc": "vote_count.desc" }[value] || fallback;
+}
 
-    const queryParams = { language: "zh-CN", sort_by: sort, page: page, include_adult: false, include_null_first_air_dates: false };
-    if (category.startsWith("tv_")) {
-        queryParams.with_networks = platformId;
-        if (category === "tv_anime") queryParams.with_genres = "16";
-        else if (category === "tv_variety") queryParams.with_genres = "10764|10767";
-        else if (category === "tv_drama") queryParams.without_genres = "16,10764,10767";
-        return await loadPlatformMatrixData("tv", queryParams);
-    } else if (category === "movie") {
-        const usMap = { "213":"8", "2739":"337", "49":"1899|15", "2552":"350" };
-        queryParams.watch_region = "US"; queryParams.with_watch_providers = usMap[platformId];
-        return await loadPlatformMatrixData("movie", queryParams);
+function mapPlatformHubItems(results, mediaType) {
+    return (results || []).filter(item => item && item.id && (item.title || item.name)).map(item => {
+        const date = item.release_date || item.first_air_date || "";
+        return { id: String(item.id), tmdbId: item.id, type: "tmdb", mediaType, title: item.title || item.name, releaseDate: date, posterPath: item.poster_path, backdropPath: item.backdrop_path, genreTitle: getGlobalGenreText(item.genre_ids), description: `${date}\n${item.overview || "暂无简介"}`, rating: item.vote_average };
+    });
+}
+
+async function loadPlatformHub(params = {}) {
+    const mode = params.hub_mode || "network";
+    const page = Number(params.page || 1);
+    const language = params.language || "zh-CN";
+    const released = params.air_status === "released";
+    const upcoming = params.air_status === "upcoming";
+    const date = platformHubDate();
+    try {
+        if (mode === "network") {
+            const sort = platformHubSort(params.sort_by || "date_desc", "first_air_date.desc");
+            const query = { language, page, sort_by: sort, with_networks: params.with_networks || "2007", include_adult: false, include_null_first_air_dates: false };
+            if (params.tv_genres) query.with_genres = params.tv_genres;
+            if (released) query["first_air_date.lte"] = date;
+            if (upcoming) query["first_air_date.gte"] = date;
+            const res = await Widget.tmdb.get("discover/tv", { params: query });
+            return mapPlatformHubItems(res.results, "tv");
+        }
+        const sort = platformHubSort(params.sort_by || "date_desc", "primary_release_date.desc");
+        const query = { language, page, sort_by: sort, with_companies: params.with_companies || "3", include_adult: false, include_video: false };
+        if (params.movie_genres) query.with_genres = params.movie_genres;
+        if (released) query["primary_release_date.lte"] = date;
+        if (upcoming) query["primary_release_date.gte"] = date;
+        const res = await Widget.tmdb.get("discover/movie", { params: query });
+        return mapPlatformHubItems(res.results, "movie");
+    } catch (e) {
+        console.error("[loadPlatformHub] 失败:", e.message || e);
+        return [{ id: "platform-hub-error", type: "text", title: "加载失败", description: "TMDB平台筛选暂时不可用" }];
     }
 }
-
-async function loadPlatformMatrixData(mediaType, params) {
-    try {
-        const res = await Widget.tmdb.get(`/discover/${mediaType}`, { params });
-        if (!res.results || res.results.length === 0) return params.page === 1 ? [{ id: "empty", type: "text", title: "暂无流媒体数据" }] : [];
-        return res.results.map(item => {
-            const date = item.first_air_date || item.release_date || "";
-            return {
-                id: String(item.id), tmdbId: item.id, type: "tmdb", mediaType: mediaType, title: item.name || item.title, date: date, releaseDate: date,
-                posterPath: item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : "", 
-                backdropPath: item.backdrop_path ? `https://image.tmdb.org/t/p/w780${item.backdrop_path}` : "", 
-                genreTitle: getGlobalGenreText(item.genre_ids),
-                description: `${date}\n${item.overview || "暂无简介"}`
-            };
-        });
-    } catch (e) { return [{ id: "err", type: "text", title: "流媒体拉取失败" }]; }
-}
-
 
 async function routeAnimeOmni(params) {
     const source = params.anime_source || "cal";
