@@ -1,7 +1,7 @@
 {
   "title": "TFEL's自用模块",
   "description": "自用模块合集",
-  "icon": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/main/icon.png",
+  "icon": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/main/icon3.png",
   "widgets": [
     {
       "id": "TFEL.Mediahub.Pro",
