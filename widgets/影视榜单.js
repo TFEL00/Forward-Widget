@@ -58,7 +58,7 @@ var WidgetMetadata = {
     title: "影视榜单",
     description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
-    version: "1.0.2",
+    version: "1.0.1",
     requiredVersion: "0.0.1",
     site: "https://t.me/TFEL000",
     
@@ -250,73 +250,6 @@ var WidgetMetadata = {
 // 3. 路由与各分类底层
 // =========================================================================
 
-// Forward 网络稳定层：限制 TMDB 并发、缓存详情、避免请求长时间阻塞
-const FORWARD_TMDB_MAX_CONCURRENCY = 4;
-const FORWARD_TMDB_TIMEOUT = 20000;
-const FORWARD_TMDB_CACHE_TTL = 6 * 60 * 60 * 1000;
-const FORWARD_TMDB_QUEUE = [];
-let FORWARD_TMDB_ACTIVE = 0;
-const FORWARD_TMDB_CACHE = Object.create(null);
-
-function forwardTmdbKey(api, options) {
-    let params = options && options.params ? options.params : {};
-    return `forward_tmdb_${api}_${JSON.stringify(params)}`;
-}
-
-function forwardRunTmdbQueue() {
-    while (FORWARD_TMDB_ACTIVE < FORWARD_TMDB_MAX_CONCURRENCY && FORWARD_TMDB_QUEUE.length) {
-        const job = FORWARD_TMDB_QUEUE.shift();
-        FORWARD_TMDB_ACTIVE++;
-        Promise.resolve().then(job.run).then(job.resolve, job.reject).finally(() => {
-            FORWARD_TMDB_ACTIVE--;
-            forwardRunTmdbQueue();
-        });
-    }
-}
-
-async function tmdbGet(api, options = {}) {
-    const key = forwardTmdbKey(api, options);
-    const now = Date.now();
-    const memory = FORWARD_TMDB_CACHE[key];
-    if (memory && now - memory.ts < FORWARD_TMDB_CACHE_TTL) return memory.data;
-    try {
-        const stored = Widget.storage && Widget.storage.get ? Widget.storage.get(key) : null;
-        if (stored && stored.data && now - stored.ts < FORWARD_TMDB_CACHE_TTL) {
-            FORWARD_TMDB_CACHE[key] = stored;
-            return stored.data;
-        }
-    } catch (e) {}
-    return new Promise((resolve) => {
-        const job = {
-            resolve,
-            reject: resolve,
-            run: async () => {
-                let timer;
-                try {
-                    const request = Widget.tmdb.get(api, options);
-                    const timeout = new Promise((_, reject) => {
-                        timer = setTimeout(() => reject(new Error("TMDB request timeout")), FORWARD_TMDB_TIMEOUT);
-                    });
-                    const data = await Promise.race([request, timeout]);
-                    clearTimeout(timer);
-                    const packed = { ts: Date.now(), data };
-                    FORWARD_TMDB_CACHE[key] = packed;
-                    try { if (Widget.storage && Widget.storage.set) Widget.storage.set(key, packed); } catch (e) {}
-                    return data;
-                } catch (e) {
-                    if (timer) clearTimeout(timer);
-                    console.error("[TMDB]", api, e.message || e);
-                    return null;
-                }
-            }
-        };
-        FORWARD_TMDB_QUEUE.push(job);
-        forwardRunTmdbQueue();
-    });
-}
-
-
-
 function platformHubDate() {
     const now = new Date(Date.now() + 8 * 60 * 60 * 1000);
     return `${now.getUTCFullYear()}-${String(now.getUTCMonth()+1).padStart(2,"0")}-${String(now.getUTCDate()).padStart(2,"0")}`;
@@ -347,7 +280,7 @@ async function loadPlatformHub(params = {}) {
             if (params.tv_genres) query.with_genres = params.tv_genres;
             if (released) query["first_air_date.lte"] = date;
             if (upcoming) query["first_air_date.gte"] = date;
-            const res = await tmdbGet("discover/tv", { params: query });
+            const res = await Widget.tmdb.get("discover/tv", { params: query });
             return mapPlatformHubItems(res.results, "tv");
         }
         const sort = platformHubSort(params.sort_by || "date_desc", "primary_release_date.desc");
@@ -355,7 +288,7 @@ async function loadPlatformHub(params = {}) {
         if (params.movie_genres) query.with_genres = params.movie_genres;
         if (released) query["primary_release_date.lte"] = date;
         if (upcoming) query["primary_release_date.gte"] = date;
-        const res = await tmdbGet("discover/movie", { params: query });
+        const res = await Widget.tmdb.get("discover/movie", { params: query });
         return mapPlatformHubItems(res.results, "movie");
     } catch (e) {
         console.error("[loadPlatformHub] 失败:", e.message || e);
@@ -433,7 +366,7 @@ function liteCleanDoubanTitle(title) {
 async function liteSearchTmdb(title, year, isTv) {
     if (!title) return null;
     try {
-        const res = await tmdbGet("search/multi", { params: { language: "zh-CN", query: title } });
+        const res = await Widget.tmdb.get("search/multi", { params: { language: "zh-CN", query: title } });
         const list = (res.results || []).filter(item => item.media_type === "movie" || item.media_type === "tv");
         if (!list.length) return null;
         if (year) {
@@ -547,7 +480,7 @@ async function fetchCalendarTmdb(id, mediaType) {
     if (CALENDAR_TMDB_PENDING[key]) return CALENDAR_TMDB_PENDING[key];
     CALENDAR_TMDB_PENDING[key] = (async () => {
         try {
-            const data = await tmdbGet(`${mediaType}/${id}`);
+            const data = await Widget.tmdb.get(`${mediaType}/${id}`);
             const packed = { ts: Date.now(), data };
             CALENDAR_TMDB_CACHE[key] = packed;
             try {
@@ -648,12 +581,12 @@ async function loadGeneralMovies(params) {
         queryParams.sort_by = "vote_average.desc"; 
         queryParams["vote_count.gte"] = 1000; 
     }
-    try { const res = await tmdbGet(endpoint, { params: queryParams }); return (res.results || []).map(i => movie_buildItem(i)).filter(Boolean); } catch (e) { return []; }
+    try { const res = await Widget.tmdb.get(endpoint, { params: queryParams }); return (res.results || []).map(i => movie_buildItem(i)).filter(Boolean); } catch (e) { return []; }
 }
 async function loadYearlyBestMovies(params) {
     try {
         let queryParams = { language: "zh-CN", page: params.page || 1, primary_release_year: params.sort_by || "2024", sort_by: "vote_average.desc", "vote_count.gte": 500 };
-        const res = await tmdbGet("/discover/movie", { params: queryParams }); return (res.results || []).map(i => movie_buildItem(i)).filter(Boolean);
+        const res = await Widget.tmdb.get("/discover/movie", { params: queryParams }); return (res.results || []).map(i => movie_buildItem(i)).filter(Boolean);
     } catch (e) { return []; }
 }
 
@@ -676,7 +609,7 @@ async function fetchGenreRankData(mediaType, genre, region, sort_rule, page) {
         if (mediaType === "movie") queryParams["primary_release_date.lte"] = maxDate; else queryParams["first_air_date.lte"] = maxDate;
     }
     try {
-        const res = await tmdbGet(`/discover/${mediaType}`, { params: queryParams });
+        const res = await Widget.tmdb.get(`/discover/${mediaType}`, { params: queryParams });
         return (res.results || []).map(item => {
             const date = item.release_date || item.first_air_date || ""; 
             return {
@@ -758,7 +691,7 @@ async function loadVarietyShows(params = {}) {
     }
 
     try {
-        const res = await tmdbGet("/discover/tv", { params: queryParams });
+        const res = await Widget.tmdb.get("/discover/tv", { params: queryParams });
         const items = res.results || [];
         if (items.length === 0) return page === 1 ? [{ id: "empty", type: "text", title: "暂无综艺数据" }] : [];
         return items.map(item => {
@@ -870,7 +803,7 @@ async function fetchRottenTomatoesList(type) {
 async function searchRtTmdb(rtItem, rank) {
     const cleanTitle = rtItem.title.replace(/\s\(\d{4}\)$/, "");
     try {
-        const res = await tmdbGet(`/search/${rtItem.mediaType}`, { params: { query: cleanTitle, language: "zh-CN" } });
+        const res = await Widget.tmdb.get(`/search/${rtItem.mediaType}`, { params: { query: cleanTitle, language: "zh-CN" } });
         const match = (res.results || [])[0];
         if (!match) return null;
         let scores = [];
@@ -910,16 +843,16 @@ async function loadImdbList(category, mediaType, page) {
         let items = [];
         if (category.startsWith("trending_")) {
             const timeWindow = category === "trending_day" ? "day" : "week";
-            const res = await tmdbGet(`/trending/${mediaType}/${timeWindow}`, { params: { language: "zh-CN", page: page } });
+            const res = await Widget.tmdb.get(`/trending/${mediaType}/${timeWindow}`, { params: { language: "zh-CN", page: page } });
             items = (res.results || []).map(i => buildImdbItem(i));
         } else {
             if (mediaType === "all") {
-                const [resM, resT] = await Promise.all([ tmdbGet(`/movie/${category}`, { params: { language: "zh-CN", page: page } }), tmdbGet(`/tv/${category}`, { params: { language: "zh-CN", page: page } }) ]);
+                const [resM, resT] = await Promise.all([ Widget.tmdb.get(`/movie/${category}`, { params: { language: "zh-CN", page: page } }), Widget.tmdb.get(`/tv/${category}`, { params: { language: "zh-CN", page: page } }) ]);
                 const movies = (resM.results || []).map(i => buildImdbItem(i, "movie"));
                 const tvs = (resT.results || []).map(i => buildImdbItem(i, "tv"));
                 items = [...movies, ...tvs].sort((a, b) => { if (category === "top_rated") return b._rating - a._rating; return 0; }).slice(0, 20);
             } else {
-                const res = await tmdbGet(`/${mediaType}/${category}`, { params: { language: "zh-CN", page: page } });
+                const res = await Widget.tmdb.get(`/${mediaType}/${category}`, { params: { language: "zh-CN", page: page } });
                 items = (res.results || []).map(i => buildImdbItem(i, mediaType));
             }
         }
@@ -950,7 +883,7 @@ async function handleTraktList(listType, traktType, traktClientId, page) {
         if (traktType === "all") stats = `[${mediaType === "tv" ? "剧" : "影"}] ${stats}`;
         if (!subject || !subject.ids || !subject.ids.tmdb) return null;
         try {
-            const d = await tmdbGet(`/${mediaType}/${subject.ids.tmdb}`, { params: { language: "zh-CN" } });
+            const d = await Widget.tmdb.get(`/${mediaType}/${subject.ids.tmdb}`, { params: { language: "zh-CN" } });
             return {
                 id: String(d.id), tmdbId: d.id, type: "tmdb", mediaType: mediaType, title: d.name || d.title || subject.title,
                 genreTitle: getGlobalGenreText(d.genres?.map(g => g.id)), releaseDate: d.first_air_date || d.release_date || "",
@@ -975,7 +908,7 @@ function mergeDoubanTmdb(target, source) {
 async function searchTmdbForDouban(query, type) {
     const q = query.replace(/第[一二三四五六七八九十\d]+[季章]/g, "").trim();
     try {
-        const res = await tmdbGet(`/search/${type}`, { params: { query: encodeURIComponent(q), language: "zh-CN" } });
+        const res = await Widget.tmdb.get(`/search/${type}`, { params: { query: encodeURIComponent(q), language: "zh-CN" } });
         return (res.results || [])[0];
     } catch (e) { return null; }
 }
@@ -1048,12 +981,12 @@ async function searchTmdbAnimeStrict(title1, title2, year) {
             let params = { query: cleanQuery, language: "zh-CN", include_adult: false };
             if (year) params.first_air_date_year = year;
             
-            let res = await tmdbGet("/search/tv", { params });
+            let res = await Widget.tmdb.get("/search/tv", { params });
             let candidates = res.results || [];
             
             if (candidates.length === 0 && year) {
                 delete params.first_air_date_year;
-                res = await tmdbGet("/search/tv", { params });
+                res = await Widget.tmdb.get("/search/tv", { params });
                 candidates = res.results || [];
             }
             
@@ -1062,12 +995,12 @@ async function searchTmdbAnimeStrict(title1, title2, year) {
 
             let mParams = { query: cleanQuery, language: "zh-CN", include_adult: false };
             if (year) mParams.primary_release_year = year;
-            res = await tmdbGet("/search/movie", { params: mParams });
+            res = await Widget.tmdb.get("/search/movie", { params: mParams });
             candidates = res.results || [];
 
             if (candidates.length === 0 && year) {
                 delete mParams.primary_release_year;
-                res = await tmdbGet("/search/movie", { params: mParams });
+                res = await Widget.tmdb.get("/search/movie", { params: mParams });
                 candidates = res.results || [];
             }
             
@@ -1253,7 +1186,7 @@ async function loadMovieReleaseTracker(params = {}) {
     };
     const route = routes[category] || routes.movie_upcoming;
     try {
-        const res = await tmdbGet(route[0], { params: { language: "zh-CN", page, region: "US" } });
+        const res = await Widget.tmdb.get(route[0], { params: { language: "zh-CN", page, region: "US" } });
         return (res.results || []).map(item => buildReleaseTrackerItem(item, route[1])).filter(Boolean);
     } catch (error) {
         console.error("[loadMovieReleaseTracker] 失败:", error.message || error);
