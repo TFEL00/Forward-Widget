@@ -23,10 +23,10 @@
     },
     {
       "id": "forward.auto.danmu2",
-      "title": "自动弹幕",
+      "title": "自动链接弹幕v2",
       "description": "自动获取播放链接并从服务器获取弹幕",
       "requiredVersion": "0.0.2",
-      "version": "1.18.8",
+      "version": "1.20.10",
       "author": "huangxd",
       "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/auto-danmu-v2.js"
     }
