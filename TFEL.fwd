@@ -17,9 +17,9 @@
       "title": "通用弹幕",
       "description": "通用弹幕插件，支持爱优腾、B站、人人等平台",
       "requiredVersion": "0.0.2",
-      "version": "0.15.8",
+      "version": "0.16.0",
       "author": "Baran",
-      "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/danmu-universe.js"
+      "url": "https://unpkg.com/@rexnow/danmu-universal"
     },
     {
       "id": "forward.auto.danmu2",
