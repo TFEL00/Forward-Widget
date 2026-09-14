@@ -58,7 +58,7 @@ var WidgetMetadata = {
     title: "影视榜单",
     description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
-    version: "1.0.1",
+    version: "1.0.2",
     requiredVersion: "0.0.1",
     site: "https://t.me/TFEL000",
     
