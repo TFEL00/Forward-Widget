@@ -1,3 +1,12 @@
+/*! ============================================================
+ *  [已废弃 / DEPRECATED] 通用弹幕 danmu-universe.js
+ *
+ *  本文件不再维护，仅作历史留存，请勿作为更新源或分发给他人。
+ *  请改用作者维护的 npm 包（自动指向最新版）：
+ *      https://unpkg.com/@rexnow/danmu-universal
+ *  上游仓库: https://github.com/baranwang/rex-widget (apps/danmu-universal)
+ *  最后仓库内版本: 0.15.8  ->  迁移目标版本: 0.16.0+
+ * ============================================================ */
 /*! For license information please see danmu-universe.js.LICENSE.txt */
 let e, t, r, n, i, o, a, s;
 var l, u, c, d, h, f, p, m = {
