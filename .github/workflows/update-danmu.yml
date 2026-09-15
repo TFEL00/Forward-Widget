@@ -1,0 +1,66 @@
+name: Update Danmu Universal
+
+# 每周一 03:00 UTC（北京时间 11:00）拉取 unpkg 上 @rexnow/danmu-universal 的最新构建
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-danmu-main
+  cancel-in-progress: false
+
+jobs:
+  update-danmu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Fetch latest danmu build from unpkg
+        id: fetch
+        run: python scripts/update_danmu.py
+
+      - name: Sync version into TFEL.fwd
+        if: steps.fetch.outputs.changed == 'true'
+        run: |
+          VER="${{ steps.fetch.outputs.version }}"
+          python - "$VER" <<'PY'
+          import json, sys, pathlib
+          ver = sys.argv[1]
+          p = pathlib.Path('TFEL.fwd')
+          data = json.loads(p.read_text(encoding='utf-8'))
+          hit = False
+          for w in data.get('widgets', []):
+              if w.get('id') == 'baranwang.danmu.universe':
+                  w['version'] = ver
+                  # 指向仓库内文件，不再直连 unpkg
+                  w['url'] = ('https://raw.githubusercontent.com/TFEL00/Forward-Widget/'
+                              'refs/heads/main/widgets/danmu-universal.js')
+                  hit = True
+          if not hit:
+              sys.exit('ERROR: TFEL.fwd 中未找到通用弹幕条目')
+          p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          print(f'TFEL.fwd 通用弹幕 -> {ver}')
+          PY
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add widgets/danmu-universal.js widgets/danmu-universal.version TFEL.fwd
+          git diff --cached --quiet && echo "无变更，跳过提交" && exit 0
+          git commit -m "chore(danmu): sync @rexnow/danmu-universal ${{ steps.fetch.outputs.version }}"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
