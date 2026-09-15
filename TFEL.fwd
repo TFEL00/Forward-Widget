@@ -19,7 +19,7 @@
       "requiredVersion": "0.0.2",
       "version": "0.16.0",
       "author": "Baran",
-      "url": "https://unpkg.com/@rexnow/danmu-universal"
+      "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/danmu-universal.js"
     },
     {
       "id": "forward.auto.danmu2",
