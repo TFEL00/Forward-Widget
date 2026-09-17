@@ -13,7 +13,7 @@
       "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/media-hub.js"
     },
     {
-      "id": "baranwang.danmu.universe",
+      "id": "baranwang.danmu.universal",
       "title": "通用弹幕",
       "description": "通用弹幕插件，支持爱优腾、B站、人人等平台",
       "requiredVersion": "0.0.2",
