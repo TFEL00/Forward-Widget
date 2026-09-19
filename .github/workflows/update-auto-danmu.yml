@@ -1,0 +1,59 @@
+name: Update Auto Danmu (build from danmu_api)
+
+# 「自动弹幕」模块是上游 huangxd-/danmu_api 用 build-forward-widget.js 打包出的产物，
+# 上游不直接发布成品。因此这里每周定时 clone 上游、构建、校验后同步进本仓库。
+on:
+  schedule:
+    - cron: '0 4 * * 1'        # 每周一 04:00 UTC = 北京时间 12:00
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-auto-danmu-main
+  cancel-in-progress: false
+
+jobs:
+  build-and-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build from upstream and sync
+        id: build
+        run: python3 scripts/update_auto_danmu.py
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add widgets/auto-danmu-v2.js widgets/auto-danmu-v2.source.json TFEL.fwd
+          if git diff --cached --quiet; then
+            echo "无变更，跳过提交"
+            exit 0
+          fi
+          git commit -m "chore(auto-danmu): sync from upstream (${{ steps.build.outputs.status }} ${{ steps.build.outputs.version }})"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
+
+      - name: Report failure
+        if: steps.build.outputs.status == 'failed'
+        run: |
+          echo "::error::所有候选 ref 均构建失败，仓库文件保持不变。上游可能变更了构建方式，需要人工检查。"
+          exit 1
