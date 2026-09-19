@@ -42,6 +42,54 @@ MIN_SIZE = 800_000         # 上游各版本产物在 0.9-1.4MB 区间
 MAX_SIZE = 3_000_000
 TAG_FALLBACKS = 2          # 回退时最多尝试几个最近的 tag
 
+# 上游 main 曾因新增的服务端「本地弹幕」模块（依赖 node:fs/path/crypto 与
+# fast-xml-parser）而无法在浏览器环境打包。下面这个插件把这两个模块替换为
+# 空实现。Forward 环境本就没有文件系统，该功能本就不可用，且调用点均有
+# try/catch 兜底，因此不影响其他功能。
+# 注意：仅在上游原生构建失败时才会启用。
+STUB_PLUGIN_FILE = "build-patch-local-danmu-stub.js"
+STUB_PLUGIN_JS = """
+// 由同步脚本注入的构建补丁（仅在原生构建失败时使用）
+export const localDanmuStubPlugin = {
+  name: 'forward-local-danmu-stub',
+  setup(build) {
+    build.onResolve({ filter: /local-danmu-(?:store|parser)\\.js$/ }, () => ({
+      path: 'local-danmu-stub',
+      namespace: 'forward-local-danmu-stub'
+    }));
+
+    build.onLoad({ filter: /^local-danmu-stub$/, namespace: 'forward-local-danmu-stub' }, () => ({
+      loader: 'js',
+      contents: `
+        export async function saveLocalDanmu() { return null; }
+        export async function getLocalDanmu() { return null; }
+        export async function listLocalDanmu() { return []; }
+        export async function removeLocalDanmu() { return false; }
+        export async function findLocalDanmu() { return null; }
+        export function parseLocalDanmu() { return []; }
+        export function normalizeLocalKey(v) { return String(v || ''); }
+        export function normalizeLocalYear() { return null; }
+        export function normalizeLocalType() { return ''; }
+        export function normalizeLocalEpisode() { return null; }
+        export function normalizeLocalSeason() { return 1; }
+        export function buildLocalDanmuResourceKey() { return ''; }
+        export function groupLocalDanmuResources() { return []; }
+      `
+    }));
+  }
+};
+"""
+
+# 把插件挂进 esbuild 的 plugins 数组；锚点变了就认为补丁失败
+PLUGIN_ANCHORS = [
+    ("      plugins: [\n        forwardRuntimeCompatPlugin,",
+     "      plugins: [\n"
+     "        (await import('./" + STUB_PLUGIN_FILE + "')).localDanmuStubPlugin,\n"
+     "        forwardRuntimeCompatPlugin,"),
+    ("plugins: [",
+     "plugins: [\n        (await import('./" + STUB_PLUGIN_FILE + "')).localDanmuStubPlugin,"),
+]
+
 
 def run(cmd, cwd=None, capture=False, check=True):
     r = subprocess.run(cmd, cwd=cwd, capture_output=capture, text=True)
@@ -169,27 +217,94 @@ def patch_metadata(text):
     return text[:idx] + new_head + tail
 
 
+def apply_stub_patch(work):
+    """给上游构建脚本注入本地弹幕打桩插件。锚点不匹配则视为补丁失败。"""
+    build_js = work / "build-forward-widget.js"
+    src = build_js.read_text(encoding="utf-8")
+    for anchor, replacement in PLUGIN_ANCHORS:
+        if src.count(anchor) == 1:
+            build_js.write_text(src.replace(anchor, replacement), encoding="utf-8")
+            (work / STUB_PLUGIN_FILE).write_text(STUB_PLUGIN_JS, encoding="utf-8")
+            print(f"[info] 已注入打桩插件（锚点: {anchor.splitlines()[0].strip()[:40]}）")
+            return True
+    raise RuntimeError("找不到可注入的锚点，上游构建脚本结构可能已变更")
+
+
+def npm_install(work):
+    """安装依赖并校验完整性。
+
+    上游仓库没有 package-lock.json，npm install 偶发不完整（表现为构建时
+    ERR_MODULE_NOT_FOUND）。这里校验 package.json 中每个直接依赖是否落地，
+    不完整就重装，避免白跑一整轮构建。
+    """
+    try:
+        deps = list((json.loads((work / "package.json").read_text(encoding="utf-8"))
+                     .get("dependencies") or {}).keys())
+    except Exception:
+        deps = []
+
+    for attempt in (1, 2):
+        run(["npm", "install", "--no-audit", "--no-fund"], cwd=work)
+        missing = [d for d in deps if not (work / "node_modules" / d).exists()]
+        if not missing:
+            return
+        print(f"[warn] 依赖安装不完整，缺少 {missing}，重试", file=sys.stderr)
+    raise RuntimeError(f"npm install 多次后仍缺少依赖: {missing}")
+
+
+def run_build(work):
+    """执行一次构建，返回 (是否成功, 错误摘要)。"""
+    out = work / "dist" / "logvar-danmu.js"
+    out.unlink(missing_ok=True)
+    r = subprocess.run(["node", "build-forward-widget.js"], cwd=work,
+                       capture_output=True, text=True)
+    if r.returncode != 0:
+        lines = [l.strip() for l in (r.stderr or r.stdout or "").splitlines() if l.strip()]
+        # 优先挑出有信息量的错误行，而不是 Node 版本这类尾部噪音
+        pick = next((l for l in lines if "ERROR" in l or "Error:" in l), None)
+        if not pick:
+            pick = lines[0] if lines else "unknown error"
+        return False, pick[:200]
+    if not out.exists():
+        return False, "构建未产出 dist/logvar-danmu.js"
+    return True, ""
+
+
 def build_ref(ref):
-    """在新的临时目录里 clone + 安装依赖 + 构建，成功则返回补丁后的文本。"""
+    """clone + 安装依赖，然后两段式构建。
+
+    第一段按上游原样构建；失败才注入打桩补丁重试，使偏离上游的程度最小，
+    并且上游一旦修复构建即自动回归原生。
+    返回 (补丁后的文本, 版本号, 是否使用了补丁)。
+    """
     work = Path(tempfile.mkdtemp(prefix="danmu-build-"))
     try:
         print(f"[info] clone {ref} ...")
         run(["git", "clone", "--depth", "1", "--branch", ref, UPSTREAM, str(work)])
 
         print("[info] npm install ...")
-        run(["npm", "install", "--no-audit", "--no-fund"], cwd=work)
+        npm_install(work)
 
-        print("[info] node build-forward-widget.js ...")
-        run(["node", "build-forward-widget.js"], cwd=work)
+        print("[info] node build-forward-widget.js (原生) ...")
+        ok, err = run_build(work)
+        used_patch = False
+
+        if not ok:
+            print(f"[info] 原生构建失败（{err}），启用本地弹幕打桩补丁重试")
+            apply_stub_patch(work)
+            print("[info] node build-forward-widget.js (打补丁) ...")
+            ok, err2 = run_build(work)
+            if not ok:
+                raise RuntimeError(f"原生构建失败({err})；打补丁后仍失败({err2})")
+            used_patch = True
 
         out = work / "dist" / "logvar-danmu.js"
-        if not out.exists():
-            raise FileNotFoundError("构建未产出 dist/logvar-danmu.js")
-
         ver = upstream_version(work)
         text = out.read_text(encoding="utf-8", errors="surrogateescape")
         ver = validate(text, ref, ver)
-        return patch_metadata(text), ver
+        if used_patch:
+            print("[info] 本次产物使用了本地弹幕打桩补丁")
+        return patch_metadata(text), ver, used_patch
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
@@ -267,12 +382,13 @@ def main():
         # 依赖安装偶发不完整（网络原因），最多重试一次
         for attempt in (1, 2):
             try:
-                text, version = build_ref(ref)
+                text, version, used_patch = build_ref(ref)
                 break
             except Exception as e:
                 last_err = e
                 print(f"[warn] {ref} 第 {attempt} 次构建失败: {e}", file=sys.stderr)
                 text = version = None
+                used_patch = False
 
         if not text or not version:
             print(f"[warn] {ref} 构建失败，尝试下一个候选", file=sys.stderr)
@@ -283,14 +399,16 @@ def main():
         OUT_JS.write_text(text, encoding="utf-8")
         print(f"[ok] 已写入 {OUT_JS} ({len(text.encode('utf-8'))} 字节)")
 
-        state.update({"ref": ref, "sha": sha, "version": version})
+        state.update({"ref": ref, "sha": sha, "version": version,
+                      "patched": used_patch})
         if ref == "main":
             # main 构建成功，清除此前记录的失败标记
             state.pop("main_broken_sha", None)
         save_state(state)
         update_fwd(version)
 
-        write_outputs(status="ok", changed="true", version=version, ref=ref)
+        write_outputs(status="ok", changed="true", version=version, ref=ref,
+                      patched=str(used_patch).lower())
         return 0
 
     # 全部候选都失败：保留仓库现有文件，只持久化失败记录供下次跳过
