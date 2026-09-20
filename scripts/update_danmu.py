@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
 """
-从 unpkg 拉取 @rexnow/danmu-universal 的最新构建产物，写入 widgets/danmu-universal.js。
+从 unpkg 拉取 @rexnow/danmu-universal 的最新构建产物，套用自定义文案后
+写入 widgets/danmu-universal.js。
 
 设计要点：
-- 先查 npm registry 拿 latest 版本号（unpkg 根路径 302 到带版本号的地址，可从中解析）
-- 下载 dist 产物，校验非空、非 HTML 错误页、体积合理
-- 任何一步失败都以非 0 退出，但**不覆盖**已有文件（保证仓库里始终是可用的旧版本）
-- 版本号写入 widgets/danmu-universal.version（便于工作流与 .fwd 对齐）
+- 先查 npm registry 拿 latest 版本号，失败则退回解析 unpkg 重定向
+- 下载 dist 产物，校验非空、非 HTML 错误页、体积合理、含 WidgetMetadata
+- 套用自定义 title / description（上游自带推广性质的描述文案）
+- 每次都重新下载并比对最终字节，避免因版本号未变而漏掉文案修改
+- 任何一步失败都以非 0 退出，但**不覆盖**已有文件（仓库里始终保持可用版本）
 
 用法: python3 scripts/update_danmu.py
 """
 import json
+import os
 import re
 import sys
 import urllib.request
@@ -22,7 +25,12 @@ UNPKG_ROOT = f"https://unpkg.com/{PKG}"
 OUT_JS = Path("widgets/danmu-universal.js")
 OUT_VER = Path("widgets/danmu-universal.version")
 MIN_SIZE = 100_000          # 合理下限，防止抓到错误页
+MODULE_ID = "baranwang.danmu.universal"
 UA = {"User-Agent": "TFEL00-Forward-Widget-updater/1.0"}
+
+# 自定义文案（上游原描述为「通用弹幕插件，支持腾讯、优酷、爱奇艺、哔哩哔哩、人人视频等平台」）
+CUSTOM_TITLE = "通用弹幕"
+CUSTOM_DESC = "支持从多个主流视频平台获取弹幕数据"
 
 
 def fetch(url, timeout=120):
@@ -66,6 +74,46 @@ def validate(body: bytes, version: str):
     print(f"[ok] 校验通过: {len(body)} 字节, version={version}")
 
 
+def metadata_head(text, span=1200):
+    """取 WidgetMetadata 定义段，避免在全文中误匹配同名字段。"""
+    if "WidgetMetadata = {" not in text:
+        raise ValueError("缺少 WidgetMetadata 定义")
+    i = text.index("WidgetMetadata = {")
+    return text[i:i + span]
+
+
+def patch_metadata(text):
+    """把模块标题与描述替换为自定义文案（仅改 WidgetMetadata 段内的字段）。"""
+    idx = text.index("WidgetMetadata = {")
+    head, tail = text[idx:idx + 1200], text[idx + 1200:]
+
+    if not re.search(r'id:\s*"' + re.escape(MODULE_ID) + r'"', head):
+        raise ValueError("WidgetMetadata 段内未找到目标 id，补丁位置可能已变")
+
+    new_head, n1 = re.subn(r'title:\s*"(?:[^"\\]|\\.)*"', f'title: "{CUSTOM_TITLE}"',
+                           head, count=1)
+    new_head, n2 = re.subn(r'description:\s*"(?:[^"\\]|\\.)*"',
+                           f'description: "{CUSTOM_DESC}"', new_head, count=1)
+    if n1 != 1 or n2 != 1:
+        raise ValueError(f"补丁失败: title={n1} description={n2}")
+
+    # 结构性复核：补丁只应改动字符串内容，不应改变括号数量
+    if (head.count("{"), head.count("}")) != (new_head.count("{"), new_head.count("}")):
+        raise ValueError("补丁后花括号数量发生变化")
+
+    print(f"[ok] 已套用自定义文案: {CUSTOM_TITLE}")
+    return text[:idx] + new_head + tail
+
+
+def write_outputs(**kv):
+    out = os.environ.get("GITHUB_OUTPUT")
+    if not out:
+        return
+    with open(out, "a") as f:
+        for k, v in kv.items():
+            f.write(f"{k}={v}\n")
+
+
 def main():
     version = get_latest_version()
     if not version:
@@ -73,38 +121,29 @@ def main():
         return 1
     print(f"[info] unpkg latest version = {version}")
 
-    old = OUT_JS.read_bytes() if OUT_JS.exists() else b""
-    old_ver = OUT_VER.read_text().strip() if OUT_VER.exists() else ""
-
-    if old_ver == version and old:
-        print(f"[skip] 已是最新 {version}，无需更新")
-        return 0
-
     url = f"{UNPKG_ROOT}@{version}/dist/danmu-universal.js"
     print(f"[info] 下载 {url}")
     try:
         body = fetch(url)
         validate(body, version)
+        text = patch_metadata(body.decode("utf-8", errors="surrogateescape"))
+        new_bytes = text.encode("utf-8", errors="surrogateescape")
     except Exception as e:
         # 关键：失败时保留旧文件，避免把仓库改坏
-        print(f"[error] 拉取或校验失败，保留原有文件: {e}", file=sys.stderr)
+        print(f"[error] 拉取、校验或套用文案失败，保留原有文件: {e}", file=sys.stderr)
         return 1
 
-    if body == old:
-        print("[skip] 内容与现有文件一致，仅同步版本号标记")
+    old = OUT_JS.read_bytes() if OUT_JS.exists() else b""
+    if new_bytes == old:
+        print(f"[skip] {version} 内容与现有文件一致（文案已是最新），无需更新")
         OUT_VER.write_text(version + "\n")
+        write_outputs(status="skipped", changed="false")
         return 0
 
-    OUT_JS.write_bytes(body)
+    OUT_JS.write_bytes(new_bytes)
     OUT_VER.write_text(version + "\n")
-    # 供工作流读取，写出到 GITHUB_OUTPUT
-    import os
-    out = os.environ.get("GITHUB_OUTPUT")
-    if out:
-        with open(out, "a") as f:
-            f.write(f"version={version}\n")
-            f.write("changed=true\n")
-    print(f"[done] 已更新到 {version}")
+    print(f"[done] 已更新到 {version}（{len(new_bytes)} 字节）")
+    write_outputs(status="ok", changed="true", version=version)
     return 0
 
 
