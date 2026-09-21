@@ -58,7 +58,7 @@ var WidgetMetadata = {
     title: "影视榜单",
     description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
-    version: "1.0.3",
+    version: "1.0.4",
     requiredVersion: "0.0.1",
     site: "https://t.me/TFEL000",
     
@@ -89,7 +89,6 @@ var WidgetMetadata = {
                         { title: "烂番茄风向标", value: "rt" },
                         { title: "Trakt 趋势榜", value: "trakt" },
                         { title: "豆瓣热榜", value: "platform_douban" },
-                        { title: "追剧榜单", value: "calendar_rank" },
                         { title: "平台剧场", value: "platform_theater" }
                     ]
                 },
@@ -128,7 +127,6 @@ var WidgetMetadata = {
                 { name: "theater_brand", title: "剧场品牌", type: "enumeration", value: "迷雾剧场", belongTo: { paramName: "hub_source", value: ["platform_theater"] }, enumOptions: [ { title: "迷雾剧场", value: "迷雾剧场" }, { title: "白夜剧场", value: "白夜剧场" }, { title: "X剧场", value: "X剧场" }, { title: "十分短剧", value: "横屏短剧" }, { title: "生花剧场", value: "生花剧场" }, { title: "暗流剧场", value: "暗流剧场" }, { title: "大家剧场", value: "大家剧场" }, { title: "小逗剧场", value: "小逗剧场" }, { title: "十分剧场", value: "十分剧场" }, { title: "板凳单元", value: "板凳单元" }, { title: "萤火单元", value: "萤火单元" }, { title: "正午阳光", value: "正午阳光" }, { title: "恋恋剧场", value: "恋恋剧场" }, { title: "微尘剧场", value: "微尘剧场" } ] },
                 { name: "theater_status", title: "播出状态", type: "enumeration", value: "all", belongTo: { paramName: "hub_source", value: ["platform_theater"] }, enumOptions: [ { title: "全部", value: "all" }, { title: "已开播", value: "aired" }, { title: "即将推出", value: "upcoming" } ] },
                 { name: "platform_sort", title: "排序方式", type: "enumeration", value: "default", belongTo: { paramName: "hub_source", value: ["platform_theater"] }, enumOptions: [ { title: "默认原序", value: "default" }, { title: "最近更新", value: "updated" }, { title: "最近发布", value: "recent" }, { title: "热度最高", value: "heat" }, { title: "流行趋势", value: "trending" }, { title: "高分优先", value: "rating" } ] },
-                { name: "calendar_rank_type", title: "榜单类型", type: "enumeration", value: "现正热播", belongTo: { paramName: "hub_source", value: ["calendar_rank"] }, enumOptions: [ { title: "现正热播", value: "现正热播" }, { title: "人气 Top", value: "人气 Top 10" }, { title: "新剧雷达", value: "新剧雷达" }, { title: "热门国漫", value: "热门国漫" }, { title: "收官好剧", value: "已收官好剧" }, { title: "华语热门", value: "华语热门" }, { title: "本季新番", value: "本季新番" } ] },
                 { name: "page", title: "页码", type: "page", startPage: 1 }
             ]
         },
@@ -337,7 +335,6 @@ async function routeTrendsHub(params) {
     }
     if (hubSource === "platform_douban") return await loadLiteDouban({ category: params.platform_channel, page });
     if (hubSource === "platform_theater") return await loadPlatformTheater({ brand: params.theater_brand, status: params.theater_status, sort_type: params.platform_sort, page });
-    if (hubSource === "calendar_rank") return await loadCalendarRank({ rankType: params.calendar_rank_type, page });
     return [];
 }
 
@@ -447,12 +444,10 @@ async function loadPlatformTheater(params = {}) {
 }
 
 
-// 追剧日历整合：今日推荐与各项榜单
+// 追剧日历整合：今日推荐
 const CALENDAR_HOME_URL = "https://zjrl-1318856176.cos.accelerate.myqcloud.com";
-const CALENDAR_RANK_TYPES = ["现正热播", "人气 Top 10", "新剧雷达", "热门国漫", "已收官好剧", "华语热门", "本季新番"];
 const CALENDAR_SUFFIX = {
-    "现正热播": "home1", "人气 Top 10": "home1", "新剧雷达": "home1", "热门国漫": "home1", "已收官好剧": "home1",
-    "华语热门": "home0", "本季新番": "home0", "今日推荐": "home0"
+    "今日推荐": "home0"
 };
 
 const CALENDAR_TMDB_CACHE = {};
@@ -536,13 +531,6 @@ async function fetchCalendarHomeData(type) {
 async function loadCalendarTodayRecommendation() {
     try { return await fetchCalendarHomeData("今日推荐"); }
     catch (e) { console.error("[今日推荐]", e.message || e); return [{ id: "calendar-error", type: "text", title: "加载失败", description: "今日推荐暂时不可用" }]; }
-}
-
-async function loadCalendarRank(params = {}) {
-    const rankType = params.rankType || "现正热播";
-    if (!CALENDAR_RANK_TYPES.includes(rankType)) return [];
-    try { return await fetchCalendarHomeData(rankType); }
-    catch (e) { console.error("[追剧榜单]", e.message || e); return [{ id: "calendar-rank-error", type: "text", title: "加载失败", description: "追剧榜单暂时不可用" }]; }
 }
 
 const MOVIE_GENRE_MAP = {
