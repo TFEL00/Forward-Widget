@@ -5300,12 +5300,15 @@ function convertChineseNumber(chineseNumber) {
 function sanitizeSearchKeyword(str) {
   return str ? String(str).replace(/[\u200B-\u200F\uFEFF]/g, "").trim() : "";
 }
-function normalizeSpaces(str) {
+function stripNonTitleChars(str) {
   return str ? String(str).replace(/[^\u4e00-\u9fa5\u3400-\u4DBF\u{20000}-\u{2EE5F}\u{30000}-\u{323AF}\u3040-\u30ff\uFF65-\uFF9F\uAC00-\uD7AFa-zA-Z0-9\uFF10-\uFF19\uFF21-\uFF3A\uFF41-\uFF5A\u2160-\u217F\u0400-\u04FF\u00C0-\u024F\u0370-\u03FF]/gu, "") : "";
+}
+function normalizeTitleForMatch(str) {
+  return str ? stripNonTitleChars(simplized(String(str))) : "";
 }
 function strictTitleMatch(title, query) {
   if (!title || !query) return !1;
-  let tagFilter = globals.titleNoiseFilter || null, cleanTitle = tagFilter ? title.replace(tagFilter, "").trim() : title, cleanQuery = tagFilter ? query.replace(tagFilter, "").trim() : query, t = normalizeSpaces(cleanTitle), q = normalizeSpaces(cleanQuery);
+  let tagFilter = globals.titleNoiseFilter || null, cleanTitle = tagFilter ? title.replace(tagFilter, "").trim() : title, cleanQuery = tagFilter ? query.replace(tagFilter, "").trim() : query, t = normalizeTitleForMatch(cleanTitle), q = normalizeTitleForMatch(cleanQuery);
   if (t === q) return !0;
   if (t.startsWith(q) && t.length > q.length) {
     let suffix = t.substring(q.length);
@@ -5328,19 +5331,14 @@ function titleMatches(title, query, parsedSeason = null, forceNonStrict = !1, th
   let titleText = String(title), queryText = String(query);
   if (!titleText || !queryText) return !1;
   if (!forceNonStrict && globals.strictTitleMatch) return strictTitleMatch(titleText, queryText);
-  let tagFilter = globals.titleNoiseFilter || null, cleanTitle = tagFilter ? titleText.replace(tagFilter, "").trim() : titleText, t = normalizeSpaces(cleanTitle).toLowerCase(), qList = [normalizeSpaces(queryText).toLowerCase()];
-  try {
-    qList = [.../* @__PURE__ */ new Set([queryText, simplized(queryText), traditionalized(queryText)])].map((kw) => normalizeSpaces(kw).toLowerCase()).filter(Boolean);
-  } catch {
-  }
-  let querySeason = parsedSeason !== null ? parsedSeason : getExplicitSeasonNumber(queryText);
+  let tagFilter = globals.titleNoiseFilter || null, cleanTitle = tagFilter ? titleText.replace(tagFilter, "").trim() : titleText, t = normalizeTitleForMatch(cleanTitle).toLowerCase(), qList = [normalizeTitleForMatch(queryText).toLowerCase()], querySeason = parsedSeason !== null ? parsedSeason : getExplicitSeasonNumber(queryText);
   if (querySeason !== null && parsedSeason === null) {
     let seasonStripped = queryText.replace(/(?:season|s|第)\s*[0-9一二三四五六七八九十]+\s*(?:季|期|部(?!分))?/gi, "").trim();
-    seasonStripped && seasonStripped !== queryText && (qList = [.../* @__PURE__ */ new Set([...qList, normalizeSpaces(seasonStripped).toLowerCase()])]);
+    seasonStripped && seasonStripped !== queryText && (qList = [.../* @__PURE__ */ new Set([...qList, normalizeTitleForMatch(seasonStripped).toLowerCase()])]);
   }
   if (tagFilter) {
     let tagStripped = queryText.replace(tagFilter, "").trim();
-    tagStripped && tagStripped !== queryText && (qList = [.../* @__PURE__ */ new Set([...qList, normalizeSpaces(tagStripped).toLowerCase()])]);
+    tagStripped && tagStripped !== queryText && (qList = [.../* @__PURE__ */ new Set([...qList, normalizeTitleForMatch(tagStripped).toLowerCase()])]);
   }
   if (querySeason !== null) {
     let titleSeason = getExplicitSeasonNumber(titleText);
@@ -5363,7 +5361,7 @@ function titleMatches(title, query, parsedSeason = null, forceNonStrict = !1, th
   if (!simMatch) {
     let yearStripped = queryText.replace(/[\(\（]\s*(?:19|20)\d{2}\s*[\)\）]|\b(?:19|20)\d{2}\b/g, "").trim();
     if (yearStripped && yearStripped !== queryText) {
-      let cleanYear = tagFilter ? yearStripped.replace(tagFilter, "").trim() : yearStripped, yearQ = normalizeSpaces(cleanYear).toLowerCase(), titleHasYear = /[\(\（]\s*(?:19|20)\d{2}\s*[\)\）]|\b(?:19|20)\d{2}\b/.test(titleText);
+      let cleanYear = tagFilter ? yearStripped.replace(tagFilter, "").trim() : yearStripped, yearQ = normalizeTitleForMatch(cleanYear).toLowerCase(), titleHasYear = /[\(\（]\s*(?:19|20)\d{2}\s*[\)\）]|\b(?:19|20)\d{2}\b/.test(titleText);
       if (yearQ && t.includes(yearQ) && !titleHasYear) return !0;
     }
   }
@@ -5382,7 +5380,7 @@ function validateType(value, expectedType) {
 }
 function extractSeasonNumberFromAnimeTitle(animeTitle) {
   if (!animeTitle) return { season: null, baseTitle: null };
-  let match = animeTitle.match(/^(.*?)\(\d{4}\)/), rawTitleWithoutYear = match ? match[1].trim() : animeTitle.split("(")[0].trim(), titleWithoutYear = normalizeSpaces(rawTitleWithoutYear), explicitSeasonMatch = titleWithoutYear.match(/第\s*([0-9一二三四五六七八九十壹贰叁肆伍陆柒捌玖拾]+)\s*[季期部]/);
+  let match = animeTitle.match(/^(.*?)\(\d{4}\)/), rawTitleWithoutYear = match ? match[1].trim() : animeTitle.split("(")[0].trim(), titleWithoutYear = stripNonTitleChars(rawTitleWithoutYear), explicitSeasonMatch = titleWithoutYear.match(/第\s*([0-9一二三四五六七八九十壹贰叁肆伍陆柒捌玖拾]+)\s*[季期部]/);
   if (explicitSeasonMatch)
     return {
       season: convertChineseNumber(explicitSeasonMatch[1]),
@@ -5409,9 +5407,15 @@ function extractSeasonNumberFromAnimeTitle(animeTitle) {
     };
   }
   let trailingChinese = titleWithoutYear.match(/([一二三四五六七八九十壹贰叁肆伍陆柒捌玖拾]+)$/);
-  return trailingChinese ? {
-    season: convertChineseNumber(trailingChinese[1]),
-    baseTitle: titleWithoutYear.replace(trailingChinese[0], "").trim()
+  if (trailingChinese)
+    return {
+      season: convertChineseNumber(trailingChinese[1]),
+      baseTitle: titleWithoutYear.replace(trailingChinese[0], "").trim()
+    };
+  let romanMatch = titleWithoutYear.match(/[\u2160-\u216B]/);
+  return romanMatch ? {
+    season: romanMatch[0].codePointAt(0) - 8544 + 1,
+    baseTitle: titleWithoutYear.replace(romanMatch[0], "").trim()
   } : { season: null, baseTitle: titleWithoutYear };
 }
 function extractEpisodeNumberFromTitle(episodeTitle) {
@@ -5486,7 +5490,7 @@ function resolveOffsetRule(rules, { anime, season, episode, source }) {
   for (let level of levels) {
     let specificMatch = null, allMatch = null, genericMatch = null;
     for (let rule of rules)
-      if (normalizeSpaces(rule.anime) === normalizeSpaces(anime)) {
+      if (normalizeTitleForMatch(rule.anime) === normalizeTitleForMatch(anime)) {
         if (level.matchEpisode) {
           if (!rule.season || !rule.episode || rule.season !== season || rule.episode !== episode) continue;
         } else if (level.matchSeason) {
@@ -6305,7 +6309,7 @@ var Globals = {
   originalEnvVars: {},
   accessedEnvVars: {},
   // 静态常量
-  VERSION: "1.21.1",
+  VERSION: "1.21.2",
   MAX_LOGS: 1e3,
   // 日志存储，最多保存 1000 行
   MAX_RECORDS: 100,
@@ -9726,8 +9730,8 @@ function getMatchingCustomRule(pAnime, sAnime) {
       cleanAnime = cleanAnime.replace(RegexStore.Clean.SOURCE_TAG, "").replace(/\[.*?\]/g, "");
     }
     return !cleanRule.includes("\u5B63") && !cleanRule.includes("season") && (cleanAnime = cleanAnime.replace(RegexStore.Season.INFO_STRONG, "")), cleanAnime = cleanAnime.replace(RegexStore.Clean.MOVIE_KEYWORDS, ""), {
-      target: normalizeSpaces(cleanAnime).replace(/\s+/g, ""),
-      rule: normalizeSpaces(cleanRule).replace(/\s+/g, "")
+      target: stripNonTitleChars(cleanAnime).replace(/\s+/g, ""),
+      rule: stripNonTitleChars(cleanRule).replace(/\s+/g, "")
     };
   };
   for (let rule of rules) {
@@ -13247,27 +13251,10 @@ var BahamutSource = class extends BaseSource {
     function bahamutTitleMatches(itemTitle, queryTitle2, searchUsedTitle) {
       if (!itemTitle) return !1;
       let tItem = String(itemTitle), q = String(queryTitle2 || ""), used = String(searchUsedTitle || "");
-      if (globals.strictTitleMatch) {
-        if (strictTitleMatch(tItem, q) || used && strictTitleMatch(tItem, used)) return !0;
-        try {
-          if (strictTitleMatch(tItem, traditionalized(q)) || strictTitleMatch(tItem, simplized(q)) || used && (strictTitleMatch(tItem, traditionalized(used)) || strictTitleMatch(tItem, simplized(used))))
-            return !0;
-        } catch {
-        }
-        return !1;
-      }
-      let normalizedItem = normalizeSpaces(tItem), normalizedQ = normalizeSpaces(q), normalizedUsed = used ? normalizeSpaces(used) : "";
-      if (normalizedItem.includes(normalizedQ) || normalizedUsed && normalizedItem.includes(normalizedUsed)) return !0;
-      try {
-        if (normalizedItem.includes(normalizeSpaces(traditionalized(q))) || normalizedItem.includes(normalizeSpaces(simplized(q))) || normalizedUsed && (normalizedItem.includes(normalizeSpaces(traditionalized(used))) || normalizedItem.includes(normalizeSpaces(simplized(used)))))
-          return !0;
-      } catch {
-      }
-      try {
-        if (normalizedItem.toLowerCase().includes(normalizedQ.toLowerCase()) || normalizedUsed && normalizedItem.toLowerCase().includes(normalizedUsed.toLowerCase())) return !0;
-      } catch {
-      }
-      return !1;
+      if (globals.strictTitleMatch)
+        return !!(strictTitleMatch(tItem, q) || used && strictTitleMatch(tItem, used));
+      let normalizedItem = normalizeTitleForMatch(tItem), normalizedQ = normalizeTitleForMatch(q), normalizedUsed = used ? normalizeTitleForMatch(used) : "";
+      return !!(normalizedItem.includes(normalizedQ) || normalizedUsed && normalizedItem.includes(normalizedUsed) || normalizedItem.toLowerCase().includes(normalizedQ.toLowerCase()) || normalizedUsed && normalizedItem.toLowerCase().includes(normalizedUsed.toLowerCase()));
     }
     let filtered = (Array.isArray(sourceAnimes) ? sourceAnimes : []).filter((item) => {
       let itemTitle = item.title || "", usedSearchTitle = item._searchUsedTitle || item._originalQuery || "";
@@ -19832,7 +19819,7 @@ var API_HEALTH2 = {
    * @returns {Array<Object>} 包含节点类型与 URL 的配置数组
    */
   _getSubjectServerPriority() {
-    let officialBase = "https://api.bgm.tv", mirrorBase = "https://api.bangumi.pro", proxyOfficialBase = this._applyProxyForSearch(officialBase), animekoNodes = (/* @__PURE__ */ new Date()).getTimezoneOffset() === -480 ? [
+    let officialBase = "https://api.bgm.tv", mirrorBase = "https://api.bangumi.vip", proxyOfficialBase = this._applyProxyForSearch(officialBase), animekoNodes = (/* @__PURE__ */ new Date()).getTimezoneOffset() === -480 ? [
       { type: "V2", url: "https://api.animeko.org" },
       { type: "V2", url: "https://danmaku-global.myani.org" },
       { type: "V2", url: "https://danmaku-cn.myani.org" },
@@ -19984,7 +19971,7 @@ var API_HEALTH2 = {
       log("info", `[animeko] \u5F00\u59CB\u641C\u7D22 (V0): ${searchKeyword}`);
       let allFilteredResults = [], offset = 0, limit = 20;
       for (; ; ) {
-        let searchPath = `/v0/search/subjects?limit=${limit}&offset=${offset}`, officialUrl = `https://api.bgm.tv${searchPath}`, mirrorUrl = `https://api.bangumi.pro${searchPath}`, proxySearchUrl = this._applyProxyForSearch(officialUrl), endpointQueue = [];
+        let searchPath = `/v0/search/subjects?limit=${limit}&offset=${offset}`, officialUrl = `https://api.bgm.tv${searchPath}`, mirrorUrl = `https://api.bangumi.vip${searchPath}`, proxySearchUrl = this._applyProxyForSearch(officialUrl), endpointQueue = [];
         proxySearchUrl !== officialUrl ? endpointQueue = [
           { id: "PROXY_OFFICIAL", url: proxySearchUrl },
           { id: "MIRROR", url: mirrorUrl }
@@ -20587,7 +20574,7 @@ async function resolveMergedDuration(url) {
   }
 }
 function matchSeason(anime, queryTitle, season) {
-  let match = anime.animeTitle.match(/^(.*?)\(\d{4}\)/), originalTitle = match ? match[1].trim() : anime.animeTitle.split("(")[0].trim(), normalizedAnimeTitle = normalizeSpaces(originalTitle), seasonQueryTitle = anime.source === "local" ? queryTitle.replace(/[（(]\s*(?:19|20)\d{2}\s*[）)]/g, "").trim() : queryTitle, normalizedQueryTitle = normalizeSpaces(seasonQueryTitle);
+  let match = anime.animeTitle.match(/^(.*?)\(\d{4}\)/), originalTitle = match ? match[1].trim() : anime.animeTitle.split("(")[0].trim(), normalizedAnimeTitle = normalizeTitleForMatch(originalTitle), seasonQueryTitle = anime.source === "local" ? queryTitle.replace(/[（(]\s*(?:19|20)\d{2}\s*[）)]/g, "").trim() : queryTitle, normalizedQueryTitle = normalizeTitleForMatch(seasonQueryTitle);
   if (normalizedAnimeTitle.includes(normalizedQueryTitle)) {
     if (normalizedAnimeTitle.startsWith(normalizedQueryTitle)) {
       let afterTitle = normalizedAnimeTitle.substring(normalizedQueryTitle.length).trim();
@@ -21145,7 +21132,7 @@ async function getComment(path2, queryFormat, segmentFlag, clientIp, includeDura
   let commentId = parseInt(path2.split("/").pop()), animeTitle = findAnimeTitleById(commentId), url = findUrlById(commentId), title = findTitleById(commentId), plat = title ? extractEpisodeTitle(title) : null;
   if (url?.startsWith("local:"))
     return getCommentByUrl(url, queryFormat, segmentFlag, includeDuration);
-  let localResource = await (async () => {
+  let localResource = segmentFlag ? null : await (async () => {
     try {
       let { findLocalDanmu: findLocalDanmu2 } = await Promise.resolve().then(() => (init_local_danmu_stub(), local_danmu_stub_exports)), [localAnimeId] = findAnimeIdByCommentId(commentId), localAnime = globals.animes.find((a) => String(a.animeId) === String(localAnimeId)), matchTitle = extractAnimeTitle(animeTitle || "").split("\u3010")[0].trim(), seasonSuffix = matchTitle.match(/\s*(?:第\s*[0-9一二三四五六七八九十壹贰叁肆伍陆柒捌玖拾]+\s*[季期部]|(?:S(?:eason)?|Part)\s*\d+)\s*$/i), season = seasonSuffix ? extractSeasonNumberFromAnimeTitle(matchTitle).season ?? 1 : 1;
       return findLocalDanmu2({
@@ -21363,7 +21350,7 @@ async function getSegmentComment(segment, queryFormat) {
 }
 
 // forward/forward-widget.js
-var wv = "1.21.1";
+var wv = "1.21.2";
 WidgetMetadata = {
   id: "forward.auto.danmu2",
   title: "自动弹幕",
