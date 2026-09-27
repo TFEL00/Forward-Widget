@@ -58,7 +58,7 @@ var WidgetMetadata = {
     title: "影视榜单",
     description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
-    version: "1.0.6",
+    version: "1.0.7",
     requiredVersion: "0.0.1",
     site: "https://t.me/TFEL000",
     
@@ -502,16 +502,18 @@ async function mapCalendarItems(sourceItems) {
         const genreIds = Array.isArray(tmdb.genres) ? tmdb.genres.map(g => g.id) : (tmdb.genre_ids || []);
         const genreText = genreIds.map(id => GLOBAL_GENRE_MAP_ALL[id]).filter(Boolean)[0] || "影视";
         const year = date ? date.substring(0, 4) : "未知";
+        // 字段形态与「影剧流行风向 - 豆瓣热榜」保持一致，确保卡片展示效果相同
         return {
-            id: String(tmdb.id), tmdbId: tmdb.id, type: "tmdb", mediaType,
+            id: tmdb.id, tmdbId: tmdb.id, type: "tmdb",
+            mediaType: tmdb.media_type || (mediaType === "movie" ? "movie" : "tv"),
             title: tmdb.title || tmdb.name,
             genreTitle: genreText,
             releaseDate: date,
             subTitle: `${year} · ${genreText}`,
             description: `${date}\n${tmdb.overview || "暂无简介"}`,
-            posterPath: tmdb.poster_path ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}` : "",
-            backdropPath: tmdb.backdrop_path ? `https://image.tmdb.org/t/p/w780${tmdb.backdrop_path}` : "",
-            rating: tmdb.vote_average
+            posterPath: tmdb.poster_path,
+            backdropPath: tmdb.backdrop_path,
+            rating: Number(tmdb.vote_average || 0)
         };
     }));
     return results.filter(Boolean);
