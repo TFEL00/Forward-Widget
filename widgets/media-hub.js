@@ -58,7 +58,7 @@ var WidgetMetadata = {
     title: "影视榜单",
     description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
-    version: "1.0.5",
+    version: "1.0.6",
     requiredVersion: "0.0.1",
     site: "https://t.me/TFEL000",
     
@@ -499,15 +499,15 @@ async function mapCalendarItems(sourceItems) {
         const tmdb = await fetchCalendarTmdb(item.id ?? item.tmdb_id, mediaType);
         if (!tmdb) return null;
         const date = tmdb.release_date || tmdb.first_air_date || "";
-        const genreText = getGlobalGenreText(
-            Array.isArray(tmdb.genres) ? tmdb.genres.map(g => g.id) : tmdb.genre_ids
-        );
+        const genreIds = Array.isArray(tmdb.genres) ? tmdb.genres.map(g => g.id) : (tmdb.genre_ids || []);
+        const genreText = genreIds.map(id => GLOBAL_GENRE_MAP_ALL[id]).filter(Boolean)[0] || "影视";
+        const year = date ? date.substring(0, 4) : "未知";
         return {
             id: String(tmdb.id), tmdbId: tmdb.id, type: "tmdb", mediaType,
             title: tmdb.title || tmdb.name,
             genreTitle: genreText,
             releaseDate: date,
-            subTitle: date ? date.substring(0, 4) : "未知",
+            subTitle: `${year} · ${genreText}`,
             description: `${date}\n${tmdb.overview || "暂无简介"}`,
             posterPath: tmdb.poster_path ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}` : "",
             backdropPath: tmdb.backdrop_path ? `https://image.tmdb.org/t/p/w780${tmdb.backdrop_path}` : "",
