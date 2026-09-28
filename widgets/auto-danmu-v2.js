@@ -5658,11 +5658,12 @@ var _Envs = class _Envs {
    * @param {string} key 环境变量的键
    * @param {any} defaultValue 默认值
    * @param {'string' | 'number' | 'boolean'} type 类型
+   * @param {boolean} [encrypt] 是否按加密变量读取，其值按掩码写入预览集合
    * @returns {any} 转换后的值
    */
   static get(key, defaultValue, type = "string", encrypt = !1) {
-    if (type === "string" && !encrypt && _Envs.RAW_ENV_KEYS.has(key))
-      return this.getRawEnv(key, defaultValue);
+    if (encrypt && _Envs.sensitiveKeys.add(key), type === "string" && _Envs.RAW_ENV_KEYS.has(key))
+      return this.getRawEnv(key, defaultValue, encrypt);
     let value;
     typeof this.env < "u" && this.env[key] ? (value = this.env[key], this.originalEnvVars.set(key, value)) : typeof process < "u" && process.env?.[key] ? (value = process.env[key], this.originalEnvVars.set(key, value)) : (value = defaultValue, this.originalEnvVars.set(key, ""));
     let parsedValue;
@@ -5720,13 +5721,14 @@ var _Envs = class _Envs {
     return result;
   }
   /**
-   * 读取自定义文本类变量，绕过 dotenv 截断保留 #：系统环境变量 > .env 原始值 > 默认值；非 Node 部署退化为普通取值。
+   * 读取文本类变量，绕过 dotenv 截断保留 #：系统环境变量 > .env 原始值 > 默认值；非 Node 部署退化为普通取值。
    * @param {string} key 环境变量键
    * @param {string} defaultValue 默认值
+   * @param {boolean} encrypt 是否按掩码写入预览集合
    * @returns {string} 原始值（含 #）
    */
-  static getRawEnv(key, defaultValue = "") {
-    let finalize = (v) => (this.originalEnvVars.set(key, v), this.accessedEnvVars.set(key, v), v);
+  static getRawEnv(key, defaultValue = "", encrypt = !1) {
+    let finalize = (v) => (this.originalEnvVars.set(key, v), this.accessedEnvVars.set(key, encrypt ? this.encryptStr(v) : v), v);
     return _Envs.systemEnvBackup ? Object.prototype.hasOwnProperty.call(_Envs.systemEnvBackup, key) ? finalize(_Envs.systemEnvBackup[key]) : _Envs.rawEnvValues && Object.prototype.hasOwnProperty.call(_Envs.rawEnvValues, key) ? finalize(_Envs.rawEnvValues[key]) : typeof process < "u" && process.env?.[key] ? finalize(process.env[key]) : finalize(defaultValue) : this.env && this.env[key] ? finalize(this.env[key]) : typeof process < "u" && process.env?.[key] ? finalize(process.env[key]) : finalize(defaultValue);
   }
   /**
@@ -6048,12 +6050,13 @@ var _Envs = class _Envs {
       BILIBILI_COOKIE: { category: "source", type: "text", description: "B\u7AD9Cookie" },
       DOUBAN_COOKIE: { category: "source", type: "text", description: "\u8C46\u74E3Cookie" },
       YOUKU_CONCURRENCY: { category: "source", type: "number", description: "\u4F18\u9177\u5E76\u53D1\u914D\u7F6E\uFF0C\u9ED8\u8BA48", min: 1, max: 16 },
-      NIPAPLAY_REPLACE_DANDAN: { category: "source", type: "boolean", description: `NipaPlay \u5F39\u5F39302\u5173\u8054\u5F39\u5E55\u66FF\u4EE3\u5F00\u5173\uFF08\u7528\u4E8E dandan \u6E90\uFF09\u3002
-\u9ED8\u8BA4\u4E3A false\uFF08\u5173\u95ED\uFF0C\u4F7F\u7528\u5F39\u5F39\u539F\u751F\u5F39\u5E55\uFF09\uFF0C\u53EF\u9009\u503C\uFF1Atrue\u3001false\u3002
-\u5F00\u542F\u540E dandan \u6E90\u4EE5 nipaplay \u5F39\u5F39302\u5173\u8054\u5F39\u5E55\u66FF\u4EE3\u5F39\u5F39\u539F\u751F\u5F39\u5E55\uFF0C\u56E0\u4F7F\u7528\u7684\u662F\u9879\u76EE\u94FE\u8DEF\u83B7\u53D6\u5F39\u5E55\u6240\u4EE5\uFF1A
-1.\u4F1A\u4E22\u5931\u5F39\u5F39\u5E73\u53F0\u5F39\u5E55
-2.\u65E0\u6CD5\u83B7\u53D6\u4E0B\u67B6\u89C6\u9891
-3.\u5982\u679C\u5173\u8054\u4E2D\u6709\u5DF4\u54C8\u59C6\u7279\u5E73\u53F0\u9700\u8981\u786E\u4FDD\u80FD\u591F\u8FDE\u901A\u5DF4\u54C8` },
+      DANDANPLAY_ACCOUNT: { category: "source", type: "text", description: `\u5F39\u5F39play\u8D26\u53F7\uFF08dandan \u6E90\u83B7\u53D6\u5F39\u5E55\u4F7F\u7528\uFF09\u3002
+\u4E0E\u5BC6\u7801\u540C\u65F6\u586B\u5199\u540E\u81EA\u52A8\u5F00\u542F\uFF0C\u65E0\u9700\u989D\u5916\u5F00\u5173\u3002
+\u5F00\u542F\u540E dandan \u6E90\u6539\u7531 NipaPlay \u4E2D\u8F6C\u5F39\u5F39play\u670D\u52A1\u7AEF\u83B7\u53D6\u5F39\u5E55\uFF0C\u5E76\u628A\u540C\u4E00\u8BF7\u6C42\u4E0B\u53D1\u7684\u5F39\u5F39302\u5173\u8054\u94FE\u63A5\u5206\u53D1\u7ED9\u5DF2\u63A5\u5165\u7684\u5BF9\u5E94\u5E73\u53F0\u6E90\u5B9E\u65F6\u62C9\u53D6\uFF1A
+\u6700\u7EC8\u5F39\u5E55\u4E3A NipaPlay \u4E2D\u8F6C\u5F39\u5F39play\u670D\u52A1\u7AEF\u5F39\u5E55\u4E0E\u81EA\u6709\u94FE\u8DEF\u5F39\u5E55\u5408\u5E76\u53BB\u91CD\u540E\u7684\u7ED3\u679C\u3002
+\u6CE8\u610F\uFF1A\u5173\u8054\u94FE\u63A5\u6307\u5411\u7684\u5E73\u53F0\u89C6\u9891\u82E5\u5DF2\u4E0B\u67B6\u5C06\u65E0\u6CD5\u901A\u8FC7\u81EA\u6709\u94FE\u8DEF\u8865\u53D6\uFF1B\u5173\u8054\u542B\u5DF4\u54C8\u59C6\u7279\u5E73\u53F0\u65F6\u9700\u786E\u4FDD\u80FD\u591F\u8FDE\u901A\u5DF4\u54C8` },
+      DANDANPLAY_PASSWORD: { category: "source", type: "text", description: `\u5F39\u5F39play\u5BC6\u7801\uFF08dandan \u6E90\u83B7\u53D6\u5F39\u5E55\u4F7F\u7528\uFF09\u3002
+\u70B9\u51FB\u7F16\u8F91\u754C\u9762\u7684\u6D4B\u8BD5\u8FDE\u901A\u6027\u6309\u94AE\u53EF\u9A8C\u8BC1\u8D26\u53F7\u4E0E NipaPlay \u4E2D\u8F6C\u5F39\u5F39play\u670D\u52A1\u7AEF\u662F\u5426\u53EF\u7528` },
       // 匹配配置
       PLATFORM_ORDER: { category: "match", type: "multi-select", options: this.ALLOWED_PLATFORMS, description: `\u5E73\u53F0\u6392\u5E8F\u914D\u7F6E\uFF0C\u53EF\u4EE5\u914D\u7F6E\u81EA\u52A8\u5339\u914D\u65F6\u7684\u4F18\u9009\u5E73\u53F0\u3002
 \u5F53\u914D\u7F6E\u5408\u5E76\u5E73\u53F0\u7684\u65F6\u5019\uFF0C\u53EF\u4EE5\u6307\u5B9A\u671F\u671B\u7684\u5408\u5E76\u6E90\uFF0C
@@ -6148,6 +6151,10 @@ var _Envs = class _Envs {
       // 豆瓣cookie
       youkuConcurrency: Math.min(this.get("YOUKU_CONCURRENCY", 8, "number"), 16),
       // 优酷并发配置
+      dandanplayAccount: this.get("DANDANPLAY_ACCOUNT", "", "string", !0),
+      // 弹弹play账号，dandan 源获取弹幕使用
+      dandanplayPassword: this.get("DANDANPLAY_PASSWORD", "", "string", !0),
+      // 弹弹play密码，dandan 源获取弹幕使用
       platformOrderArr: this.resolvePlatformOrder(),
       // 自动匹配优选平台
       animeTitleFilter: this.resolveAnimeTitleFilter(),
@@ -6198,8 +6205,6 @@ var _Envs = class _Envs {
       // 弹幕缓存最少条数，低于该值时忽略缓存（默认 100，0 表示关闭）
       hongguoMergeAllEpisodes: this.get("HONGGUO_MERGE_ALL_EPISODES", !1, "boolean"),
       // 红果短剧是否合并全集弹幕（默认 false）
-      nipaplayReplaceDandan: this.get("NIPAPLAY_REPLACE_DANDAN", !1, "boolean"),
-      // NipaPlay 弹弹302关联弹幕替代开关，开启后 dandan 源以 nipaplay 弹弹302关联弹幕替代弹弹原生弹幕
       convertTopBottomToScroll: this.get("CONVERT_TOP_BOTTOM_TO_SCROLL", !1, "boolean"),
       // 顶部/底部弹幕转换为浮动弹幕配置（默认 false，禁用转换）
       convertColor: this.get("CONVERT_COLOR", "default", "string"),
@@ -6257,8 +6262,9 @@ var _Envs = class _Envs {
 };
 __publicField(_Envs, "env"), // 记录获取过的环境变量
 __publicField(_Envs, "originalEnvVars", /* @__PURE__ */ new Map()), __publicField(_Envs, "accessedEnvVars", /* @__PURE__ */ new Map()), // Node 本地部署时由 server.js 注入：启动前的真实系统环境变量快照（最高优先级判定依据）与 .env 原始解析结果
-__publicField(_Envs, "systemEnvBackup", null), __publicField(_Envs, "rawEnvValues", null), // 允许在值中写入 # 等 dotenv 视为注释字符的文本类变量；读取时绕过 dotenv 截断以保留完整内容。仅纳入 encrypt=false 变量（带令牌/密码 URL 若入此集合会绕过加密返回明文，故禁止纳入）。
-__publicField(_Envs, "RAW_ENV_KEYS", /* @__PURE__ */ new Set(["AI_MATCH_PROMPT", "ANIME_TITLE_FILTER", "AUTO_MATCH_MAPPING_TABLE", "BLOCKED_WORDS", "COLOR_POOL", "CUSTOM_MERGE_RULES", "DANMU_OFFSET", "DANMU_PUSH_URL", "EPISODE_TITLE_FILTER", "IP_BLACKLIST", "OTHER_SERVER", "TITLE_MAPPING_TABLE", "TITLE_NOISE_FILTER", "VOD_SERVERS"])), __publicField(_Envs, "VOD_ALLOWED_PLATFORMS", ["qiyi", "bilibili1", "imgo", "youku", "qq", "migu", "sohu", "leshi", "xigua", "maiduidui", "aiyifan"]), // vod允许的播放平台
+__publicField(_Envs, "systemEnvBackup", null), __publicField(_Envs, "rawEnvValues", null), // 按 encrypt 读取的变量（凭据类），随 Envs.get 调用登记，供日志脱敏判定是否为敏感变量
+__publicField(_Envs, "sensitiveKeys", /* @__PURE__ */ new Set()), // 允许在值中写入 # 等 dotenv 视为注释字符的变量；读取时绕过 dotenv 截断以保留完整内容。加密变量按掩码写入预览集合，原始值仅供运行期使用与日志脱敏。
+__publicField(_Envs, "RAW_ENV_KEYS", /* @__PURE__ */ new Set(["ADMIN_TOKEN", "AI_API_KEY", "AI_MATCH_PROMPT", "ANIME_TITLE_FILTER", "AUTO_MATCH_MAPPING_TABLE", "BLOCKED_WORDS", "BILIBILI_COOKIE", "COLOR_POOL", "CUSTOM_MERGE_RULES", "CUSTOM_SOURCE_API_URL", "DANDANPLAY_ACCOUNT", "DANDANPLAY_PASSWORD", "DANMU_OFFSET", "DANMU_PUSH_URL", "DEPLOY_PLATFROM_ACCOUNT", "DEPLOY_PLATFROM_PROJECT", "DEPLOY_PLATFROM_TOKEN", "DOUBAN_COOKIE", "EPISODE_TITLE_FILTER", "IP_BLACKLIST", "LOCAL_REDIS_URL", "OTHER_SERVER", "PROXY_URL", "TITLE_MAPPING_TABLE", "TITLE_NOISE_FILTER", "TMDB_API_KEY", "TOKEN", "UPSTASH_REDIS_REST_TOKEN", "UPSTASH_REDIS_REST_URL", "VOD_SERVERS"])), __publicField(_Envs, "VOD_ALLOWED_PLATFORMS", ["qiyi", "bilibili1", "imgo", "youku", "qq", "migu", "sohu", "leshi", "xigua", "maiduidui", "aiyifan"]), // vod允许的播放平台
 __publicField(_Envs, "ALLOWED_PLATFORMS", ["qiyi", "bilibili1", "imgo", "youku", "qq", "migu", "renren", "hanjutv", "sohu", "leshi", "xigua", "maiduidui", "aiyifan", "hongguo", "dandan", "bahamut", "animeko", "custom"]), // 全部源允许的播放平台
 __publicField(_Envs, "ALLOWED_SOURCES", ["360", "vod", "tmdb", "douban", "tencent", "youku", "iqiyi", "imgo", "bilibili", "migu", "renren", "hanjutv", "sohu", "leshi", "xigua", "maiduidui", "aiyifan", "hongguo", "dandan", "bahamut", "animeko", "custom", "local"]), // 允许的源
 __publicField(_Envs, "MERGE_ALLOWED_SOURCES", ["tencent", "youku", "iqiyi", "imgo", "bilibili", "migu", "renren", "hanjutv", "sohu", "leshi", "xigua", "maiduidui", "aiyifan", "hongguo", "dandan", "bahamut", "animeko"]), // 允许的源合并
@@ -6309,7 +6315,7 @@ var Globals = {
   originalEnvVars: {},
   accessedEnvVars: {},
   // 静态常量
-  VERSION: "1.21.2",
+  VERSION: "1.21.3",
   MAX_LOGS: 1e3,
   // 日志存储，最多保存 1000 行
   MAX_RECORDS: 100,
@@ -13372,9 +13378,83 @@ var BahamutSource = class extends BaseSource {
 };
 
 // danmu_api/utils/nipaplay-util.js
-var _keyMask = new Uint8Array([237, 67, 45, 109, 89, 4, 82, 107, 109, 211, 243, 208, 85, 182, 233, 79]), _keyXored = new Uint8Array([163, 42, 93, 12, 127, 72, 61, 12, 59, 178, 129, 246, 103, 84, 105, 196]), NIPAPLAY_AES_KEY = utf8BytesToString(new Uint8Array(_keyXored.map((b, i) => b ^ _keyMask[i]))), _appIdFrag = ["wBQ0gL26", "oPlbCiLn", "f37+sQ=="], NIPAPLAY_APP_ID_CIPHERTEXT = _appIdFrag.join(""), _secretFrag = ["9CB0Qo6tW1", "CfUDx3jCtV", "rUat/EMK+x", "voco1Y2MF8", "YQUuM14JDN", "1/wWqIRHP", "H/buF"], NIPAPLAY_APP_SECRET_CIPHERTEXT = _secretFrag.join(""), NIPAPLAY_APP_ID = aesDecryptBase64(NIPAPLAY_APP_ID_CIPHERTEXT, NIPAPLAY_AES_KEY), NIPAPLAY_APP_SECRET = aesDecryptBase64(NIPAPLAY_APP_SECRET_CIPHERTEXT, NIPAPLAY_AES_KEY);
-function generateNipaplaySignature(appId, timestamp, apiPath, appSecret) {
-  return bytesToBase64(sha256(`${appId}${timestamp}${apiPath}${appSecret}`));
+var NIPAPLAY_GATEWAY_SERVERS = [
+  "https://nipaplay.aimes-soft.com/dandanplay",
+  "http://43.142.85.190/dandanplay"
+], GATEWAY_FAILURE_THRESHOLD = 3, GATEWAY_FAILOVER_DURATION = 300 * 1e3, TOKEN_RENEW_AHEAD = 1440 * 60 * 1e3, NIPAPLAY_USER_AGENT = `LogVar Danmu API/${globals.version}`, primaryFailures = 0, failoverUntil = 0, accountToken = null, tokenExpireTime = 0, tokenAccount = "", loginTask = null;
+function isNipaplayAccountConfigured() {
+  return !!(globals.dandanplayAccount && globals.dandanplayPassword);
+}
+function currentAccount() {
+  return globals.dandanplayAccount || "";
+}
+function activeGateway() {
+  return failoverUntil && Date.now() >= failoverUntil && (failoverUntil = 0, primaryFailures = 0, log("info", "[dandan] [nipaplay] NipaPlay \u4E2D\u8F6C\u5F39\u5F39play\u670D\u52A1\u7AEF\u5907\u7528\u7EBF\u8DEF\u63A5\u66FF\u7ED3\u675F\uFF0C\u6062\u590D\u4E3B\u7EBF\u8DEF")), failoverUntil ? NIPAPLAY_GATEWAY_SERVERS[1] : NIPAPLAY_GATEWAY_SERVERS[0];
+}
+function reportGatewayResult(success) {
+  if (success) {
+    primaryFailures = 0;
+    return;
+  }
+  failoverUntil || (primaryFailures++, !(primaryFailures < GATEWAY_FAILURE_THRESHOLD) && (primaryFailures = 0, failoverUntil = Date.now() + GATEWAY_FAILOVER_DURATION, log("info", `[dandan] [nipaplay] NipaPlay \u4E2D\u8F6C\u5F39\u5F39play\u670D\u52A1\u7AEF\u4E3B\u7EBF\u8DEF\u8FDE\u7EED\u5931\u8D25\uFF0C\u4E34\u65F6\u5207\u6362\u5907\u7528\u7EBF\u8DEF: ${NIPAPLAY_GATEWAY_SERVERS[1]}`)));
+}
+async function requestGateway(run) {
+  let gateway = activeGateway();
+  try {
+    let result = await run(gateway);
+    return reportGatewayResult(!0), result;
+  } catch (error) {
+    throw reportGatewayResult(!1), error;
+  }
+}
+async function loginAccount(account, password) {
+  return (await requestGateway((gateway) => Widget.http.post(
+    `${gateway}/api/v2/login`,
+    JSON.stringify({ userName: account, password }),
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "User-Agent": NIPAPLAY_USER_AGENT
+      },
+      validStatusCodes: [200, 401],
+      retries: 1
+    }
+  )))?.data || null;
+}
+async function renewAccountToken(token) {
+  return (await requestGateway((gateway) => Widget.http.get(`${gateway}/api/v2/login/renew`, {
+    headers: {
+      Accept: "application/json",
+      "User-Agent": NIPAPLAY_USER_AGENT,
+      Authorization: `Bearer ${token}`
+    },
+    validStatusCodes: [200, 401],
+    retries: 1
+  })))?.data || null;
+}
+function applyTokenData(data) {
+  if (!data?.token) return null;
+  accountToken = data.token, tokenAccount = currentAccount();
+  let expire = Date.parse(data.tokenExpireTime);
+  return tokenExpireTime = Number.isFinite(expire) ? expire : 0, accountToken;
+}
+function clearAccountToken() {
+  accountToken = null, tokenExpireTime = 0, tokenAccount = "";
+}
+async function getAccountToken() {
+  let account = currentAccount();
+  return accountToken && tokenAccount === account && (!tokenExpireTime || Date.now() < tokenExpireTime - TOKEN_RENEW_AHEAD) ? accountToken : (loginTask || (loginTask = (async () => {
+    if (accountToken && tokenAccount === account) {
+      let renewed = applyTokenData(await renewAccountToken(accountToken));
+      if (renewed) return renewed;
+    }
+    let data = await loginAccount(globals.dandanplayAccount, globals.dandanplayPassword), token = applyTokenData(data);
+    if (!token) throw new Error(data?.errorMessage || "\u8D26\u53F7\u767B\u5F55\u672A\u8FD4\u56DE\u4EE4\u724C");
+    return token;
+  })().finally(() => {
+    loginTask = null;
+  })), loginTask);
 }
 var RELATED_PLATFORM_BY_HOST = {
   "bilibili.com": "bilibili",
@@ -13409,7 +13489,7 @@ function parseNipaplayRelatedLinks(location) {
     }
     let hostKey = Object.keys(RELATED_PLATFORM_BY_HOST).find((key) => host.endsWith(key)) || null;
     if (!hostKey) {
-      log("info", `[nipaplay] \u5F39\u5F39302\u5173\u8054\u94FE\u63A5\u542B\u672A\u652F\u6301\u5E73\u53F0\uFF0C\u8DF3\u8FC7: ${urls[i]}`);
+      log("info", `[dandan] [nipaplay] \u5F39\u5F39302\u5173\u8054\u94FE\u63A5\u542B\u672A\u652F\u6301\u5E73\u53F0\uFF0C\u8DF3\u8FC7: ${urls[i]}`);
       continue;
     }
     let platform = RELATED_PLATFORM_BY_HOST[hostKey], shift = shifts[i] || 0;
@@ -13421,29 +13501,6 @@ function parseNipaplayRelatedLinks(location) {
     result[platform].push({ url: urls[i], shift });
   }
   return result;
-}
-var NIPAPLAY_USER_AGENT = `LogVar Danmu API/${globals.version}`;
-async function fetchNipaplayRelatedLinks(episodeId) {
-  if (!NIPAPLAY_APP_ID || !NIPAPLAY_APP_SECRET)
-    return log("info", "[nipaplay] \u51ED\u8BC1\u672A\u5C31\u7EEA\uFF0C\u8DF3\u8FC7\u5F39\u5F39302\u5173\u8054\u515C\u5E95"), null;
-  let timestamp = Math.round(Date.now() / 1e3), apiPath = `/api/v2/comment/${episodeId}`, signature = generateNipaplaySignature(NIPAPLAY_APP_ID, timestamp, apiPath, NIPAPLAY_APP_SECRET), url = `https://api.dandanplay.net${apiPath}?withRelated=true&chConvert=0`;
-  try {
-    let resp = await Widget.http.get(url, {
-      headers: {
-        Accept: "application/json",
-        "User-Agent": NIPAPLAY_USER_AGENT,
-        "X-AppId": NIPAPLAY_APP_ID,
-        "X-Timestamp": String(timestamp),
-        "X-Signature": signature
-      },
-      allow_redirects: !1,
-      validStatusCodes: [302],
-      retries: 1
-    });
-    return resp.status !== 302 || !resp.headers.location ? (log("info", `[nipaplay] \u5F39\u5F39302\u5173\u8054\u94FE\u63A5\u672A\u8FD4\u56DE 302 (status=${resp.status})`), null) : parseNipaplayRelatedLinks(resp.headers.location);
-  } catch (error) {
-    return log("error", `[nipaplay] \u5F39\u5F39302\u5173\u8054\u94FE\u63A5\u8BF7\u6C42\u5931\u8D25: ${error.message}`), null;
-  }
 }
 function resolveNipaplayLink(url) {
   let host = "";
@@ -13461,12 +13518,55 @@ function resolveNipaplayLink(url) {
 }
 function applyShiftToDanmu(danmu, shift = 0) {
   if (!danmu || typeof danmu != "object") return danmu;
-  let next = { ...danmu };
-  if (typeof next.p == "string") {
-    let parts = next.p.split(","), time = parseFloat(parts[0]);
-    isNaN(time) || (parts[0] = (time + shift).toFixed(2)), next.p = parts.join(",");
+  let [shifted] = applyOffset([danmu], shift);
+  return { ...shifted, isRealTimePulled: !0 };
+}
+async function fetchNativeComments(location) {
+  let resp = await Widget.http.get(location, {
+    headers: {
+      Accept: "application/json",
+      "User-Agent": NIPAPLAY_USER_AGENT
+    },
+    retries: 1
+  });
+  return Array.isArray(resp?.data?.comments) ? resp.data.comments : [];
+}
+async function fetchNipaplayDanmaku(episodeId) {
+  if (!isNipaplayAccountConfigured()) return null;
+  try {
+    return await requestNipaplayDanmaku(episodeId, !1);
+  } catch (error) {
+    return log("error", `[dandan] [nipaplay] NipaPlay \u4E2D\u8F6C\u5F39\u5F39play\u670D\u52A1\u7AEF\u5F39\u5E55\u8BF7\u6C42\u5931\u8D25: ${error.message}`), null;
   }
-  return typeof next.t == "number" && (next.t += shift), next.isRealTimePulled = !0, next;
+}
+async function requestNipaplayDanmaku(episodeId, retried) {
+  let token = await getAccountToken(), resp = await requestGateway((gateway) => Widget.http.get(
+    `${gateway}/api/v2/comment/${episodeId}?withRelated=true&chConvert=0`,
+    {
+      headers: {
+        Accept: "application/json",
+        "User-Agent": NIPAPLAY_USER_AGENT,
+        Authorization: `Bearer ${token}`
+      },
+      allow_redirects: !1,
+      validStatusCodes: [200, 302, 401],
+      retries: 1
+    }
+  ));
+  if (resp.status === 401) {
+    if (retried) throw new Error("\u8D26\u53F7\u767B\u5F55\u5DF2\u5931\u6548");
+    return log("info", "[dandan] [nipaplay] NipaPlay \u4E2D\u8F6C\u5F39\u5F39play\u670D\u52A1\u7AEF\u8FD4\u56DE\u767B\u5F55\u5931\u6548\uFF0C\u91CD\u65B0\u767B\u5F55\u540E\u91CD\u8BD5"), clearAccountToken(), requestNipaplayDanmaku(episodeId, !0);
+  }
+  let location = resp.headers?.location || resp.headers?.Location, relatedLinks = resp.status === 302 && location ? parseNipaplayRelatedLinks(location) : null, comments = [];
+  if (resp.status === 200)
+    comments = Array.isArray(resp.data?.comments) ? resp.data.comments : [];
+  else if (location)
+    try {
+      comments = await fetchNativeComments(location);
+    } catch (error) {
+      log("error", `[dandan] [nipaplay] \u5F39\u5F39play \u539F\u751F\u5F39\u5E55\u83B7\u53D6\u5931\u8D25: ${error.message}`);
+    }
+  return { comments, relatedLinks };
 }
 
 // danmu_api/sources/tencent.js
@@ -16272,74 +16372,7 @@ var YoukuSource = class extends BaseSource {
 };
 
 // danmu_api/sources/dandan.js
-var tencentSource = new TencentSource(), iqiyiSource = new IqiyiSource(), mangoSource = new MangoSource(), bilibiliSource = new BilibiliSource(), youkuSource = new YoukuSource(), bahamutSource = new BahamutSource(), DandanUserAgent = `LogVar Danmu API/${globals.version}`, SOURCE_TO_PLATFORM = {
-  bilibili: "bilibili1",
-  bahamut: "bahamut",
-  iqiyi: "qiyi",
-  youku: "youku",
-  tencent: "qq",
-  imgo: "imgo"
-};
-async function getRelatedDanmuViaNipaplay(episodeId, coveredSources) {
-  let links = await fetchNipaplayRelatedLinks(episodeId);
-  if (!links) return [];
-  let summary = Object.entries(links).filter(([, arr]) => arr && arr.length).map(([p, arr]) => `${SOURCE_TO_PLATFORM[p] || p}\xD7${arr.length}`).join(", ");
-  summary && log("info", `[dandan] nipaplay \u5F39\u5F39302\u5173\u8054\u515C\u5E95\u63D0\u53D6\u5230\u5F39\u5F39302\u5173\u8054\u94FE\u63A5: ${summary}`);
-  let sourceMap = {
-    bilibili: bilibiliSource,
-    bahamut: bahamutSource,
-    iqiyi: iqiyiSource,
-    youku: youkuSource,
-    tencent: tencentSource,
-    imgo: mangoSource
-  }, pending = [], skipped = [];
-  for (let [platform, linksOfPlatform] of Object.entries(links)) {
-    if (!linksOfPlatform || linksOfPlatform.length === 0) continue;
-    let platformLabel = SOURCE_TO_PLATFORM[platform];
-    if (!platformLabel || coveredSources.has(platform) || coveredSources.has(platformLabel)) {
-      platformLabel && skipped.push(platformLabel);
-      continue;
-    }
-    let sourceInstance = sourceMap[platform];
-    if (sourceInstance)
-      for (let { url, shift } of linksOfPlatform) {
-        let { source, realId } = resolveNipaplayLink(url);
-        if (source !== platform) {
-          log("info", `[dandan] nipaplay \u5F39\u5F39302\u5173\u8054\u94FE\u63A5\u5E73\u53F0\u89E3\u6790\u4E0D\u4E00\u81F4\uFF0C\u58F0\u660E ${platform} \u5B9E\u5F97 ${source}\uFF0C\u8DF3\u8FC7: ${url}`);
-          continue;
-        }
-        pending.push({
-          platformLabel,
-          run: () => sourceInstance.getEpisodeDanmu(realId, []).then((raw) => sourceInstance.formatComments(raw || []).map((d) => applyShiftToDanmu({ ...d, _sourceLabel: platformLabel }, shift))).catch((e) => (log("error", `[dandan] nipaplay \u5F39\u5F39302\u5173\u8054\u62C9\u53D6 ${platformLabel} \u5931\u8D25: ${e.message}`), []))
-        });
-      }
-  }
-  skipped.length && log("info", `[dandan] nipaplay \u5F39\u5F39302\u5173\u8054\u515C\u5E95\u8DF3\u8FC7\u5DF2\u5408\u5E76\u6E90\uFF08\u907F\u514D\u91CD\u590D\u62C9\u53D6\uFF09: ${skipped.join(", ")}`);
-  let groups = /* @__PURE__ */ new Map();
-  for (let task of pending)
-    groups.has(task.platformLabel) || groups.set(task.platformLabel, []), groups.get(task.platformLabel).push(task.run);
-  return (await Promise.all(Array.from(groups.values()).map(async (runs) => {
-    let items = [];
-    for (let i = 0; i < runs.length; i++)
-      items.push(...await runs[i]()), i < runs.length - 1 && await new Promise((r) => setTimeout(r, 1e3));
-    return items;
-  }))).flat().filter(Boolean);
-}
-async function fetchDandanComments(id) {
-  try {
-    let resp = await Widget.http.get(`https://api.danmaku.weeblify.app/ddp/v1?path=%2Fv2%2Fcomment%2F${id}%3Ffrom%3D0%26withRelated%3Dtrue%26chConvert%3D0`, {
-      headers: {
-        "Content-Type": "application/json",
-        "User-Agent": DandanUserAgent
-      },
-      retries: 1
-    });
-    return resp && resp.data && resp.data.comments ? resp.data.comments : [];
-  } catch (e) {
-    return log("error", `[dandan] dandan base comments error: ${e.message}`), [];
-  }
-}
-var DandanSource = class extends BaseSource {
+var tencentSource = new TencentSource(), iqiyiSource = new IqiyiSource(), mangoSource = new MangoSource(), bilibiliSource = new BilibiliSource(), youkuSource = new YoukuSource(), bahamutSource = new BahamutSource(), DandanSource = class extends BaseSource {
   /**
    * 搜索动画条目
    * 包含常规搜索、TMDB 日语原名搜索，以及去除季度信息后的降级搜索策略
@@ -16615,26 +16648,21 @@ var DandanSource = class extends BaseSource {
     }
     return this.sortAndPushAnimesByYear(tmpAnimes, curAnimes), tmpAnimes;
   }
-  // 接收 mergedSources 参数，包含所有参与合并的具体源链接信息，用于避免重复获取
+  // 合并链接按 $$$ 拆分后逐段传入，每段形如 `<源名>:<真实ID>`；据此取出已参与合并的源名，避免对其重复拉取
   async getEpisodeDanmu(id, mergedSources = []) {
-    let allDanmus = [], coveredSources = new Set((mergedSources || []).map((m) => (typeof m == "string" ? m.split(":")[0] : m?.logicalSource) || "").filter(Boolean));
+    let coveredSources = new Set((mergedSources || []).map((part) => String(part).split(":")[0]).filter(Boolean));
     try {
-      if (globals.nipaplayReplaceDandan) {
-        let related = await getRelatedDanmuViaNipaplay(id, coveredSources);
-        related.length > 0 ? (allDanmus = related, log("info", `[dandan] NIPAPLAY_REPLACE_DANDAN \u542F\u7528\uFF0Cnipaplay \u5F39\u5F39302\u5173\u8054\u5F39\u5E55\u66FF\u4EE3\u5F39\u5F39\u539F\u751F\u5F39\u5E55\uFF08${related.length} \u6761\uFF09`)) : (log("info", "[dandan] NIPAPLAY_REPLACE_DANDAN \u5F39\u5F39302\u5173\u8054\u94FE\u63A5\u4E3A\u7A7A\uFF0C\u56DE\u9000\u5F39\u5F39\u81EA\u8EAB\u5F39\u5E55"), allDanmus = await fetchDandanComments(id));
-      } else if (allDanmus = await fetchDandanComments(id), allDanmus.length === 0) {
-        log("info", "[dandan] dandan \u539F\u751F\u5F39\u5E55\u4E3A\u7A7A\uFF0C\u89E6\u53D1 NipaPlay \u5F39\u5F39302\u5173\u8054\u515C\u5E95");
-        let related = await getRelatedDanmuViaNipaplay(id, coveredSources);
-        related.length > 0 ? (allDanmus = related, log("info", `[dandan] nipaplay \u5F39\u5F39302\u5173\u8054\u515C\u5E95\u8865\u5145 ${related.length} \u6761\u8DE8\u5E73\u53F0\u5F39\u5E55`)) : log("info", "[dandan] nipaplay \u5F39\u5F39302\u5173\u8054\u515C\u5E95\u672A\u83B7\u53D6\u5230\u8DE8\u5E73\u53F0\u5F39\u5E55");
-      }
+      let nipaplay = await fetchNipaplayDanmaku(id);
+      if (!nipaplay) return await fetchDandanComments(id);
+      let related = await getRelatedDanmuViaNipaplay(nipaplay.relatedLinks, coveredSources);
+      return log("info", `[dandan] NipaPlay \u4E2D\u8F6C\u5F39\u5F39play\u670D\u52A1\u7AEF\u5F39\u5E55 ${nipaplay.comments.length} \u6761\uFF0C\u5F39\u5F39302\u5173\u8054\u94FE\u63A5\u83B7\u53D6 ${related.length} \u6761`), [...nipaplay.comments, ...related];
     } catch (error) {
-      log("error", "[dandan] getEpisodeDanmu error:", {
+      return log("error", "[dandan] getEpisodeDanmu error:", {
         message: error.message,
         name: error.name,
         stack: error.stack
-      });
+      }), [];
     }
-    return allDanmus;
   }
   async getEpisodeDanmuSegments(id) {
     return log("info", "[dandan] \u83B7\u53D6\u5F39\u5F39play\u5F39\u5E55\u5206\u6BB5\u5217\u8868...", id), new SegmentListResponse({
@@ -16660,7 +16688,72 @@ var DandanSource = class extends BaseSource {
       m: c.m
     });
   }
+}, DandanUserAgent = `LogVar Danmu API/${globals.version}`, SOURCE_TO_PLATFORM = {
+  bilibili: "bilibili1",
+  bahamut: "bahamut",
+  iqiyi: "qiyi",
+  youku: "youku",
+  tencent: "qq",
+  imgo: "imgo"
 };
+async function getRelatedDanmuViaNipaplay(links, coveredSources) {
+  if (!links) return [];
+  let summary = Object.entries(links).filter(([, arr]) => arr && arr.length).map(([p, arr]) => `${SOURCE_TO_PLATFORM[p] || p}\xD7${arr.length}`).join(", ");
+  summary && log("info", `[dandan] \u5F39\u5F39302\u5173\u8054\u94FE\u63A5\u5206\u53D1\u76EE\u6807: ${summary}`);
+  let sourceMap = {
+    bilibili: bilibiliSource,
+    bahamut: bahamutSource,
+    iqiyi: iqiyiSource,
+    youku: youkuSource,
+    tencent: tencentSource,
+    imgo: mangoSource
+  }, pending = [], skipped = [];
+  for (let [platform, linksOfPlatform] of Object.entries(links)) {
+    if (!linksOfPlatform || linksOfPlatform.length === 0) continue;
+    let platformLabel = SOURCE_TO_PLATFORM[platform];
+    if (!platformLabel || coveredSources.has(platform) || coveredSources.has(platformLabel)) {
+      platformLabel && skipped.push(platformLabel);
+      continue;
+    }
+    let sourceInstance = sourceMap[platform];
+    if (sourceInstance)
+      for (let { url, shift } of linksOfPlatform) {
+        let { source, realId } = resolveNipaplayLink(url);
+        if (source !== platform) {
+          log("info", `[dandan] \u5F39\u5F39302\u5173\u8054\u94FE\u63A5\u5E73\u53F0\u89E3\u6790\u4E0D\u4E00\u81F4\uFF0C\u58F0\u660E ${platform} \u5B9E\u5F97 ${source}\uFF0C\u8DF3\u8FC7: ${url}`);
+          continue;
+        }
+        pending.push({
+          platformLabel,
+          run: () => sourceInstance.getEpisodeDanmu(realId).then((raw) => sourceInstance.formatComments(raw || []).map((d) => applyShiftToDanmu({ ...d, realTimeSource: platformLabel }, shift))).catch((e) => (log("error", `[dandan] \u5F39\u5F39302\u5173\u8054\u62C9\u53D6 ${platformLabel} \u5931\u8D25: ${e.message}`), []))
+        });
+      }
+  }
+  skipped.length && log("info", `[dandan] \u5F39\u5F39302\u5173\u8054\u5206\u53D1\u8DF3\u8FC7\u5DF2\u5408\u5E76\u6E90\uFF08\u907F\u514D\u91CD\u590D\u62C9\u53D6\uFF09: ${skipped.join(", ")}`);
+  let groups = /* @__PURE__ */ new Map();
+  for (let task of pending)
+    groups.has(task.platformLabel) || groups.set(task.platformLabel, []), groups.get(task.platformLabel).push(task.run);
+  return (await Promise.all(Array.from(groups.values()).map(async (runs) => {
+    let items = [];
+    for (let i = 0; i < runs.length; i++)
+      items.push(...await runs[i]()), i < runs.length - 1 && await new Promise((r) => setTimeout(r, 1e3));
+    return items;
+  }))).flat().filter(Boolean);
+}
+async function fetchDandanComments(id) {
+  try {
+    let resp = await Widget.http.get(`https://api.danmaku.weeblify.app/ddp/v1?path=%2Fv2%2Fcomment%2F${id}%3Ffrom%3D0%26withRelated%3Dtrue%26chConvert%3D0`, {
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": DandanUserAgent
+      },
+      retries: 1
+    });
+    return resp && resp.data && resp.data.comments ? resp.data.comments : [];
+  } catch (e) {
+    return log("error", `[dandan] dandan base comments error: ${e.message}`), [];
+  }
+}
 
 // danmu_api/sources/custom.js
 var CustomSource = class extends BaseSource {
@@ -20454,7 +20547,7 @@ var SOURCE_REGISTRY = [
     logName: "",
     factory: () => new CustomSource(),
     deps: [],
-    handleAdapter: (instance, searchResult, queryTitle, isolatedAnimes) => instance.handleAnimes(searchResult, queryTitle, isolatedAnimes)
+    handleAdapter: (instance, searchResult, queryTitle, isolatedAnimes, isolatedDetailStore) => instance.handleAnimes(searchResult, queryTitle, isolatedAnimes, isolatedDetailStore)
   },
   { key: "tencent", logName: "", factory: () => new TencentSource(), deps: [] },
   { key: "iqiyi", logName: "", factory: () => new IqiyiSource(), deps: [] },
@@ -21350,7 +21443,7 @@ async function getSegmentComment(segment, queryFormat) {
 }
 
 // forward/forward-widget.js
-var wv = "1.21.2";
+var wv = "1.21.3";
 WidgetMetadata = {
   id: "forward.auto.danmu2",
   title: "自动弹幕",
