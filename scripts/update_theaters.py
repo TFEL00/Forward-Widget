@@ -40,18 +40,77 @@ THEATERS = [
     { "name": "微尘剧场", "id": "161658331" }
 ]
 
+_CN_DIGITS = {"零": 0, "〇": 0, "一": 1, "二": 2, "两": 2, "三": 3, "四": 4,
+              "五": 5, "六": 6, "七": 7, "八": 8, "九": 9}
+_CN_UNITS = {"十": 10, "百": 100, "千": 1000}
+_CN_BIG = {"万": 10000, "亿": 100000000}
+_CN_NUM_RE = re.compile("[零〇一二三四五六七八九十百千万亿两]+")
+
+
+def _cn_numeral_to_int(seg):
+    """把中文数字串解析成整数，无法解析时返回 None。
+
+    纯数字串（如「一九四二」）按逐位拼接处理——这是年号/编号的常见写法；
+    含十百千万亿时按位值解析（如「十八」= 18、「二十」= 20）。
+    """
+    if all(ch in _CN_DIGITS for ch in seg):
+        return int("".join(str(_CN_DIGITS[ch]) for ch in seg))
+
+    total = section = number = 0
+    for ch in seg:
+        if ch in _CN_DIGITS:
+            number = _CN_DIGITS[ch]
+        elif ch in _CN_UNITS:
+            section += (number or 1) * _CN_UNITS[ch]
+            number = 0
+        elif ch in _CN_BIG:
+            section = (section + number) * _CN_BIG[ch]
+            total += section
+            section = number = 0
+        else:
+            return None
+    return total + section + number
+
+
+def convert_cn_numerals(text):
+    """把中文数字转成阿拉伯数字，仅在写法明确时转换。
+
+    规则（保守，避免误伤「一生一世」「三国」「万万没想到」这类词）：
+      - 连续两个及以上的数字串（如「十八」「二十一」「一九四二」）才转换
+      - 单字数字仅在「第X」或位于标题末尾时转换（如「第2季」「欢乐颂2」）
+      - 解析结果为 0 或无法解析时不转换
+
+    两侧使用同一套转换，因此转换本身保持一致，不会引入错配。
+    """
+    def repl(m):
+        seg = m.group(0)
+        start, end = m.start(), m.end()
+        n = _cn_numeral_to_int(seg)
+        if not n:                      # None 或 0，保持原样
+            return seg
+        if len(seg) == 1:
+            prev = text[start - 1] if start > 0 else ""
+            if prev != "第" and end != len(text):
+                return seg
+        return str(n)
+
+    return _CN_NUM_RE.sub(repl, text)
+
+
 def normalize_title(text):
     """标题比对前的归一化：只消除「书写形式」差异。
 
-    处理范围：全角/半角差异（NFKC）+ 各类标点与空白（Unicode 分类 P*/Z*）。
-    刻意不做任何字符替换或语序调整，因此不会把不同剧集（例如
+    处理范围：全角/半角（NFKC）、标点与空白（Unicode 分类 P*/Z*）、
+    中文数字与阿拉伯数字的写法差异。
+    刻意不做语序调整或字符替换，因此不会把不同剧集（例如
     「遮云」与「云遮月」）误判为同一部。
     """
     t = unicodedata.normalize("NFKC", text or "")
-    return "".join(
+    t = "".join(
         ch for ch in t
         if not (unicodedata.category(ch).startswith("P") or unicodedata.category(ch).startswith("Z"))
-    ).lower()
+    )
+    return convert_cn_numerals(t).lower()
 
 
 def clean_douban_title(raw_title):
@@ -169,9 +228,16 @@ async def search_tmdb(session, item, cache):
                     norm_query = normalize_title(title)
                     norm_tmdb = normalize_title(res.get("name"))
                     
-                    # 宽松一点包含匹配，兼容部分副标题与标点写法差异
-                    is_title_match = bool(norm_query) and bool(norm_tmdb) and (
-                        norm_query in norm_tmdb or norm_tmdb in norm_query)
+                    # 匹配规则：完全相同直接命中；否则仅当较短一方不少于 3 个字时
+                    # 才允许包含匹配，避免「深渊」误配「深渊无间」这类短标题误伤。
+                    if not norm_query or not norm_tmdb:
+                        is_title_match = False
+                    elif norm_query == norm_tmdb:
+                        is_title_match = True
+                    else:
+                        shorter = min(len(norm_query), len(norm_tmdb))
+                        is_title_match = shorter >= 3 and (
+                            norm_query in norm_tmdb or norm_tmdb in norm_query)
                     is_year_match = True
                     first_air = res.get("first_air_date")
                     
