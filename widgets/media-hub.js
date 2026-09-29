@@ -58,7 +58,7 @@ var WidgetMetadata = {
     title: "影视榜单",
     description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
-    version: "1.0.9",
+    version: "1.0.10",
     requiredVersion: "0.0.1",
     site: "https://t.me/TFEL000",
     
@@ -279,6 +279,18 @@ async function mapPlatformHubItems(results, mediaType) {
             await Promise.race([patch, guard]);
         } catch (e) {}
     }
+
+    // 🔧 临时调试：定位平台片库不显示剧照的原因，问题确认后删除
+    try {
+        const lack = items.filter(i => !i.backdropPath).length;
+        items.push({
+            id: "hub-debug-temp", type: "text", title: "🔧 调试信息（临时）",
+            description: `媒体类型 ${mediaType}｜条目 ${items.length}｜有剧照 ${items.length - lack}｜缺剧照 ${lack}\n` +
+                `样本 backdropPath = ${JSON.stringify(items[0] && items[0].backdropPath)}\n` +
+                `样本 posterPath = ${JSON.stringify(items[0] && items[0].posterPath)}`
+        });
+    } catch (e) {}
+
     return items;
 }
 
