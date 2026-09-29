@@ -58,7 +58,7 @@ var WidgetMetadata = {
     title: "影视榜单",
     description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
-    version: "1.0.13",
+    version: "1.0.14",
     requiredVersion: "0.0.1",
     site: "https://t.me/TFEL000",
     
@@ -324,6 +324,12 @@ async function mapPlatformHubItems(results, mediaType) {
             await Promise.race([patch, new Promise(resolve => setTimeout(resolve, 15000))]);
         } catch (e) {}
     }
+
+    // Forward 不会自动把 posterPath 复用为 backdropPath。
+    // 对仍然没有剧照的条目显式使用海报兜底，避免卡片背景为空。
+    items.forEach(i => {
+        if (!i.backdropPath && i.posterPath) i.backdropPath = i.posterPath;
+    });
 
     return items;
 }
