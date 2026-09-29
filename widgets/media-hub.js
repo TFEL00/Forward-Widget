@@ -58,7 +58,7 @@ var WidgetMetadata = {
     title: "影视榜单",
     description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
-    version: "1.0.10",
+    version: "1.0.11",
     requiredVersion: "0.0.1",
     site: "https://t.me/TFEL000",
     
@@ -265,31 +265,34 @@ async function mapPlatformHubItems(results, mediaType) {
 
     // 列表接口（discover）的剧照索引比详情接口滞后数小时，刚开播的剧常常只有海报没有剧照。
     // 这里只对缺剧照的条目补一次详情请求；结果走 6 小时缓存，重复打开模块不会重复请求。
-    // 两道保险：最多补 6 条；整体最多等 4 秒。任何异常都只影响补图，不影响列表本身。
+    // 列表接口（discover）的剧照索引可能滞后；详情接口仍没有时，
+    // 直接查询 /images 图库（上传后最快可见）。最多补 6 条，整体最多等 6 秒。
     const missing = items.filter(i => !i.backdropPath).slice(0, 6);
     if (missing.length) {
         try {
             const patch = Promise.all(missing.map(async i => {
                 try {
                     const detail = await fetchCalendarTmdb(i.tmdbId, i.mediaType);
-                    if (detail && detail.backdrop_path) i.backdropPath = detail.backdrop_path;
+                    if (detail && detail.backdrop_path) {
+                        i.backdropPath = detail.backdrop_path;
+                        return;
+                    }
+                    const images = await Widget.tmdb.get(`${i.mediaType}/${i.tmdbId}/images`, {
+                        params: { include_image_language: "zh-CN,en,null" }
+                    });
+                    const backdrops = Array.isArray(images?.backdrops) ? images.backdrops : [];
+                    if (backdrops.length) {
+                        const best = backdrops.slice().sort((a, b) =>
+                            ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0))
+                        )[0];
+                        if (best?.file_path) i.backdropPath = best.file_path;
+                    }
                 } catch (e) {}
             }));
-            const guard = new Promise(resolve => setTimeout(resolve, 4000));
+            const guard = new Promise(resolve => setTimeout(resolve, 6000));
             await Promise.race([patch, guard]);
         } catch (e) {}
     }
-
-    // 🔧 临时调试：定位平台片库不显示剧照的原因，问题确认后删除
-    try {
-        const lack = items.filter(i => !i.backdropPath).length;
-        items.push({
-            id: "hub-debug-temp", type: "text", title: "🔧 调试信息（临时）",
-            description: `媒体类型 ${mediaType}｜条目 ${items.length}｜有剧照 ${items.length - lack}｜缺剧照 ${lack}\n` +
-                `样本 backdropPath = ${JSON.stringify(items[0] && items[0].backdropPath)}\n` +
-                `样本 posterPath = ${JSON.stringify(items[0] && items[0].posterPath)}`
-        });
-    } catch (e) {}
 
     return items;
 }
