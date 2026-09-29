@@ -143,6 +143,8 @@ async def search_tmdb(session, item, cache):
             if resp.status == 200:
                 data = await resp.json()
                 results = data.get("results", [])
+                if not results:
+                    print(f"    ⚠️ [未匹配] 「{title}」（{year or '无年份'}）: TMDB 搜索无结果")
                 
                 # 获取当天的北京时间，用于拦截未开播的剧
                 tz_bj = datetime.timezone(datetime.timedelta(hours=8))
@@ -160,19 +162,32 @@ async def search_tmdb(session, item, cache):
                     if year and first_air:
                         is_year_match = first_air.startswith(year)
                         
+                    if not is_title_match:
+                        print(f"    ⏭ [跳过] 「{title}」: 标题不匹配（TMDB=「{res.get('name')}」）")
+                    elif not is_year_match:
+                        print(f"    ⏭ [跳过] 「{title}」: 年份不匹配（豆列={year}，TMDB首播={first_air}）")
+
                     if is_title_match and is_year_match:
                         # 🔴 核心拦截逻辑 1：检查是否缺失ID和海报
                         tmdb_id = res.get("id")
                         poster_path = res.get("poster_path")
                         backdrop_path = res.get("backdrop_path")
                         
-                        if not tmdb_id or not poster_path or not backdrop_path:
-                            # 数据不全，看 TMDB 返回的下一个搜索结果
+                        if not tmdb_id or not poster_path:
+                            print(f"    ⏭ [跳过] 「{title}」: TMDB 缺 id 或海报")
                             continue
+
+                        # 剧照缺失时用海报兜底，避免刚开播的新剧被整条丢弃
+                        if not backdrop_path:
+                            print(f"    ℹ️ [兜底] 「{title}」: TMDB 暂缺剧照，改用海报")
+                            backdrop_path = poster_path
                             
                         # 🔴 核心拦截逻辑 2：检查是否未开播
-                        if not first_air or first_air > today_str:
-                            # 未到开播时间，或者 TMDB 根本没写开播时间，直接跳过
+                        if not first_air:
+                            print(f"    ⏭ [跳过] 「{title}」: TMDB 未填写首播日期")
+                            continue
+                        if first_air > today_str:
+                            print(f"    ⏭ [跳过] 「{title}」: 尚未开播（TMDB首播={first_air}，今天={today_str}）")
                             continue
 
                         # 🔴 新增：拿着 id 去请求详情，获取最新更新日期 (last_air_date)
