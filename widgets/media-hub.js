@@ -58,7 +58,7 @@ var WidgetMetadata = {
     title: "影视榜单",
     description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
-    version: "1.0.8",
+    version: "1.0.9",
     requiredVersion: "0.0.1",
     site: "https://t.me/TFEL000",
     
@@ -265,14 +265,19 @@ async function mapPlatformHubItems(results, mediaType) {
 
     // 列表接口（discover）的剧照索引比详情接口滞后数小时，刚开播的剧常常只有海报没有剧照。
     // 这里只对缺剧照的条目补一次详情请求；结果走 6 小时缓存，重复打开模块不会重复请求。
-    const missing = items.filter(i => !i.backdropPath);
+    // 两道保险：最多补 6 条；整体最多等 4 秒。任何异常都只影响补图，不影响列表本身。
+    const missing = items.filter(i => !i.backdropPath).slice(0, 6);
     if (missing.length) {
-        await Promise.all(missing.map(async i => {
-            try {
-                const detail = await fetchCalendarTmdb(i.tmdbId, i.mediaType);
-                if (detail && detail.backdrop_path) i.backdropPath = detail.backdrop_path;
-            } catch (e) {}
-        }));
+        try {
+            const patch = Promise.all(missing.map(async i => {
+                try {
+                    const detail = await fetchCalendarTmdb(i.tmdbId, i.mediaType);
+                    if (detail && detail.backdrop_path) i.backdropPath = detail.backdrop_path;
+                } catch (e) {}
+            }));
+            const guard = new Promise(resolve => setTimeout(resolve, 4000));
+            await Promise.race([patch, guard]);
+        } catch (e) {}
     }
     return items;
 }
