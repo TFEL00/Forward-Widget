@@ -58,7 +58,7 @@ var WidgetMetadata = {
     title: "影视榜单",
     description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
-    version: "1.0.15",
+    version: "1.0.16",
     requiredVersion: "0.0.1",
     site: "https://t.me/TFEL000",
     
@@ -231,7 +231,7 @@ var WidgetMetadata = {
             params: [
                 { name: "hub_mode", title: "筛选模式", type: "enumeration", value: "network", enumOptions: [ { title: "播出平台", value: "network" }, { title: "出品公司", value: "company" } ] },
                 { name: "with_networks", title: "播出平台", type: "enumeration", value: "2007", belongTo: { paramName: "hub_mode", value: ["network"] }, enumOptions: [ { title: "腾讯视频", value: "2007" }, { title: "优酷视频", value: "1419" }, { title: "芒果视频", value: "1631" }, { title: "爱奇艺", value: "1330" }, { title: "哔哩哔哩", value: "1605" }, { title: "Apple TV+", value: "2552" }, { title: "NETFLIX", value: "213" }, { title: "Disney+", value: "2739" }, { title: "HBO", value: "49" }, { title: "HBO Max", value: "3186" }, { title: "Hulu", value: "453" }, { title: "Amazon Prime Video", value: "1024" }, { title: "FOX", value: "19" }, { title: "Paramount+", value: "4330" }, { title: "BBC One", value: "332" }, { title: "BBC Two", value: "295" }, { title: "NBC", value: "6" }, { title: "TV Tokyo", value: "94" }, { title: "AMC+", value: "174" }, { title: "We TV", value: "3732" }, { title: "Viu TV", value: "2146" }, { title: "TVB", value: "48" } ] },
-                { name: "tv_genres", title: "内容类型", type: "enumeration", value: "", belongTo: { paramName: "hub_mode", value: ["network"] }, enumOptions: [ { title: "全部类型", value: "" }, { title: "犯罪", value: "80" }, { title: "动画", value: "16" }, { title: "喜剧", value: "35" }, { title: "剧情", value: "18" }, { title: "家庭", value: "10751" }, { title: "悬疑", value: "9648" }, { title: "真人秀", value: "10764" }, { title: "脱口秀", value: "10767" }, { title: "纪录片", value: "99" }, { title: "动作与冒险", value: "10759" }, { title: "科幻与奇幻", value: "10765" }, { title: "战争与政治", value: "10768" } ] },
+                { name: "tv_genres", title: "内容类型", type: "enumeration", value: "", belongTo: { paramName: "hub_mode", value: ["network"] }, enumOptions: [ { title: "全部类型", value: "" }, { title: "犯罪", value: "80" }, { title: "动画", value: "16" }, { title: "喜剧", value: "35" }, { title: "剧情", value: "18" }, { title: "家庭", value: "10751" }, { title: "悬疑", value: "9648" }, { title: "纪录片", value: "99" }, { title: "动作与冒险", value: "10759" }, { title: "科幻与奇幻", value: "10765" }, { title: "战争与政治", value: "10768" } ] },
                 { name: "with_companies", title: "出品公司", type: "enumeration", value: "2", belongTo: { paramName: "hub_mode", value: ["company"] }, enumOptions: [ { title: "Disney", value: "2" }, { title: "Warner Bros", value: "174" }, { title: "Marvel", value: "420" }, { title: "DC Universe", value: "128064" }, { title: "Pixar", value: "3" }, { title: "Columbia", value: "5" }, { title: "Sony", value: "34" }, { title: "Universal", value: "33" }, { title: "Paramount", value: "4" }, { title: "20th Century", value: "25" }, { title: "Toho", value: "882" }, { title: "A24", value: "41077" }, { title: "Blumhouse", value: "3172" }, { title: "Working Title Films", value: "10163" } ] },
                 { name: "movie_genres", title: "内容类型", type: "enumeration", value: "", belongTo: { paramName: "hub_mode", value: ["company"] }, enumOptions: [ { title: "全部类型", value: "" }, { title: "冒险", value: "12" }, { title: "剧情", value: "18" }, { title: "动作", value: "28" }, { title: "动画", value: "16" }, { title: "历史", value: "36" }, { title: "喜剧", value: "35" }, { title: "奇幻", value: "14" }, { title: "家庭", value: "10751" }, { title: "恐怖", value: "27" }, { title: "悬疑", value: "9648" }, { title: "惊悚", value: "53" }, { title: "战争", value: "10752" }, { title: "爱情", value: "10749" }, { title: "犯罪", value: "80" }, { title: "科幻", value: "878" }, { title: "西部", value: "37" }, { title: "音乐", value: "10402" }, { title: "电视电影", value: "10770" } ] },
                 { name: "air_status", title: "上映状态", type: "enumeration", value: "released", enumOptions: [ { title: "已上映", value: "released" }, { title: "未上映", value: "upcoming" }, { title: "全部", value: "" } ] },
@@ -257,8 +257,16 @@ function platformHubSort(value, fallback) {
     return { date_desc: fallback, date_asc: fallback.replace(".desc", ".asc"), "popularity.desc": "popularity.desc", "vote_average.desc": "vote_average.desc", "vote_count.desc": "vote_count.desc" }[value] || fallback;
 }
 
+// 平台片库排除的类型：真人秀 / 脱口秀（剧集类型 id）
+const HUB_EXCLUDED_TV_GENRES = [10764, 10767];
+
 async function mapPlatformHubItems(results, mediaType) {
-    return (results || []).filter(item => item && item.id && (item.title || item.name)).map(item => {
+    return (results || [])
+        .filter(item => item && item.id && (item.title || item.name))
+        // 剔除真人秀与脱口秀；缺少 genre_ids 的条目保守保留。
+        .filter(item => !Array.isArray(item.genre_ids)
+            || !item.genre_ids.some(g => HUB_EXCLUDED_TV_GENRES.includes(g)))
+        .map(item => {
         const date = item.release_date || item.first_air_date || "";
         const posterPath = item.poster_path || "";
         // 平台片库只要求卡片有背景：没有 backdrop 时直接复用 poster。
@@ -284,7 +292,7 @@ async function loadPlatformHub(params = {}) {
     try {
         if (mode === "network") {
             const sort = platformHubSort(params.sort_by || "date_desc", "first_air_date.desc");
-            const query = { language, page, sort_by: sort, with_networks: params.with_networks || "2007", include_adult: false, include_null_first_air_dates: false };
+            const query = { language, page, sort_by: sort, with_networks: params.with_networks || "2007", include_adult: false, include_null_first_air_dates: false, without_genres: HUB_EXCLUDED_TV_GENRES.join(",") };
             if (params.tv_genres) query.with_genres = params.tv_genres;
             if (released) query["first_air_date.lte"] = date;
             if (upcoming) query["first_air_date.gte"] = date;
