@@ -58,7 +58,7 @@ var WidgetMetadata = {
     title: "影视榜单",
     description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
-    version: "1.0.12",
+    version: "1.0.13",
     requiredVersion: "0.0.1",
     site: "https://t.me/TFEL000",
     
@@ -257,6 +257,39 @@ function platformHubSort(value, fallback) {
     return { date_desc: fallback, date_asc: fallback.replace(".desc", ".asc"), "popularity.desc": "popularity.desc", "vote_average.desc": "vote_average.desc", "vote_count.desc": "vote_count.desc" }[value] || fallback;
 }
 
+let PLATFORM_THEATER_BACKDROPS = null;
+async function getPlatformTheaterBackdropMap() {
+    if (PLATFORM_THEATER_BACKDROPS) return PLATFORM_THEATER_BACKDROPS;
+    try {
+        const data = await PlatformTheaterUtils.fetch("theater-data.json");
+        const map = {};
+        Object.values(data || {}).forEach(brand => {
+            [...(brand?.aired || []), ...(brand?.upcoming || [])].forEach(item => {
+                if (item?.id && item?.backdropPath) map[String(item.id)] = item.backdropPath;
+            });
+        });
+        PLATFORM_THEATER_BACKDROPS = map;
+        return map;
+    } catch (e) {
+        PLATFORM_THEATER_BACKDROPS = {};
+        return PLATFORM_THEATER_BACKDROPS;
+    }
+}
+
+async function fetchPlatformImages(mediaType, id) {
+    const paths = [`${mediaType}/${id}/images`, `/${mediaType}/${id}/images`];
+    for (const path of paths) {
+        try {
+            const r = await Widget.tmdb.get(path, { params: { include_image_language: "zh-CN,en,null" } });
+            const payload = r?.data || r;
+            const list = Array.isArray(payload?.backdrops) ? payload.backdrops
+                : (Array.isArray(payload?.data?.backdrops) ? payload.data.backdrops : []);
+            if (list.length) return list;
+        } catch (e) {}
+    }
+    return [];
+}
+
 async function mapPlatformHubItems(results, mediaType) {
     const items = (results || []).filter(item => item && item.id && (item.title || item.name)).map(item => {
         const date = item.release_date || item.first_air_date || "";
@@ -265,26 +298,21 @@ async function mapPlatformHubItems(results, mediaType) {
 
     // 列表接口（discover）的剧照索引比详情接口滞后数小时，刚开播的剧常常只有海报没有剧照。
     // 这里只对缺剧照的条目补一次详情请求；结果走 6 小时缓存，重复打开模块不会重复请求。
-    // 列表接口（discover）的剧照索引可能滞后；详情接口仍没有时，
-    // 直接查询 /images 图库（上传后最快可见）。最多补 6 条，整体最多等 15 秒。
+    // 先复用仓库剧场数据：同一 TMDB id 已在剧场抓取链路中验证过剧照。
+    try {
+        const theaterMap = await getPlatformTheaterBackdropMap();
+        items.forEach(i => { if (!i.backdropPath && theaterMap[i.tmdbId]) i.backdropPath = theaterMap[i.tmdbId]; });
+    } catch (e) {}
+
+    // 仍缺图的条目再查详情与 /images。最多补 6 条，整体最多等 15 秒。
     const missing = items.filter(i => !i.backdropPath).slice(0, 6);
     if (missing.length) {
         try {
             const patch = Promise.all(missing.map(async i => {
                 try {
                     const detail = await fetchCalendarTmdb(i.tmdbId, i.mediaType);
-                    if (detail && detail.backdrop_path) {
-                        i.backdropPath = detail.backdrop_path;
-                        return;
-                    }
-                    // 使用带前导斜杠的标准 TMDB 路径；兼容不同 Forward 客户端的返回包装。
-                    const images = await Widget.tmdb.get(`/${i.mediaType}/${i.tmdbId}/images`, {
-                        params: { include_image_language: "zh-CN,en,null" }
-                    });
-                    const payload = images?.data || images;
-                    const backdrops = Array.isArray(payload?.backdrops)
-                        ? payload.backdrops
-                        : (Array.isArray(payload?.data?.backdrops) ? payload.data.backdrops : []);
+                    if (detail && detail.backdrop_path) { i.backdropPath = detail.backdrop_path; return; }
+                    const backdrops = await fetchPlatformImages(i.mediaType, i.tmdbId);
                     if (backdrops.length) {
                         const best = backdrops.slice().sort((a, b) =>
                             ((b.width || 0) * (b.height || 0)) - ((a.width || 0) * (a.height || 0))
@@ -293,8 +321,7 @@ async function mapPlatformHubItems(results, mediaType) {
                     }
                 } catch (e) {}
             }));
-            const guard = new Promise(resolve => setTimeout(resolve, 15000));
-            await Promise.race([patch, guard]);
+            await Promise.race([patch, new Promise(resolve => setTimeout(resolve, 15000))]);
         } catch (e) {}
     }
 
