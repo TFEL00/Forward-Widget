@@ -259,10 +259,14 @@ async def search_tmdb(session, item, cache):
                             print(f"    ⏭ [跳过] 「{title}」: TMDB 缺 id 或海报")
                             continue
 
-                        # 剧照缺失时用海报兜底，避免刚开播的新剧被整条丢弃
+                        # 剧照缺失时用海报兜底，避免刚开播的新剧被整条丢弃。
+                        # 注意：TMDB 搜索接口的索引会滞后，新剧常常搜不到剧照，
+                        # 下面请求详情接口后会再补正一次。
+                        used_poster_fallback = False
                         if not backdrop_path:
-                            print(f"    ℹ️ [兜底] 「{title}」: TMDB 暂缺剧照，改用海报")
+                            print(f"    ℹ️ [兜底] 「{title}」: 搜索接口暂缺剧照，先用海报")
                             backdrop_path = poster_path
+                            used_poster_fallback = True
                             
                         # 🔴 核心拦截逻辑 2：检查是否未开播
                         if not first_air:
@@ -284,6 +288,12 @@ async def search_tmdb(session, item, cache):
                                 if d_resp.status == 200:
                                     d_data = await d_resp.json()
                                     last_update_date = d_data.get("last_air_date") or first_air
+                                    # 详情接口的剧照才是权威来源（搜索接口索引滞后）
+                                    real_backdrop = d_data.get("backdrop_path")
+                                    if real_backdrop and not (backdrop_path and not used_poster_fallback):
+                                        if used_poster_fallback:
+                                            print(f"    ✅ [剧照] 「{title}」: 详情接口取到真实剧照，替换海报兜底")
+                                        backdrop_path = real_backdrop
                         except Exception as e:
                             pass # 详情获取失败不影响主体逻辑
 
