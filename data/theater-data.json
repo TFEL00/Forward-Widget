@@ -1,5 +1,5 @@
 {
-  "last_updated": "2026-09-29 19:35:27",
+  "last_updated": "2026-09-29 20:02:23",
   "迷雾剧场": {
     "aired": [
       {
@@ -1644,6 +1644,21 @@
         "genreTitle": "悬疑,科幻奇幻"
       },
       {
+        "id": "277762",
+        "type": "tmdb",
+        "title": "我和我爸的18岁",
+        "description": "一对隔阂重重的父子，因为一场穿越，让林梓豪回到了父亲林佳旭的十八岁，一个遍地是金的九十年代。在这里林梓豪认识到了不一样的父亲，两人甚至成为了“好兄弟”，他们携手并肩而行，经历了一段跌宕起伏的青春。林梓豪也利用自己来自未来的优势，在这个火热的年代，重拾英歌魂、缔造商业神话。",
+        "rating": 6.0,
+        "voteCount": 1,
+        "popularity": 1.9165,
+        "releaseDate": "2024-12-03",
+        "lastUpdateDate": "2024-12-15",
+        "posterPath": "/bOENnGl8GQBbICVSvnS3BzFXegX.jpg",
+        "backdropPath": "/h5CrEH88B5Ces25BL4TpQO520lo.jpg",
+        "mediaType": "tv",
+        "genreTitle": "剧情,科幻奇幻"
+      },
+      {
         "id": "273137",
         "type": "tmdb",
         "title": "南柯梦",
@@ -3247,6 +3262,21 @@
         "genreTitle": "喜剧,剧情"
       },
       {
+        "id": "195568",
+        "type": "tmdb",
+        "title": "医是医二是二",
+        "description": "关东门，一个结庐百年的隐世门派，一场武林纷争，险些绝迹武林。某日，精明老头六世祖李世真与门派首徒李逍陆一路逃亡行至逍遥镇聚贤街，意外帮助与女儿相依为命的酒馆老板娘徐二娘化解了一场江湖危机，徐二娘借机与二位豪杰携手合作，阴差阳错之下，昔日酒馆变成了武馆，又因连遭踢馆险些灭门，武馆又变成了医馆。在二位师弟令人“智熄”的操作下，本该热热闹闹的开业庆典引发了一场塌天大祸，关东门人成为武林公敌。在开设医馆的过程中，关东门人结交了各路英雄豪杰和武林奇葩，凭借半吊子的医疗方法歪打正着的救治了一个又一个江湖怪客，上演了一出又一出滑稽搞笑的武林闹剧。在鸡飞狗跳，啼笑皆非的搞笑日常里，一个深深隐藏的惊天秘密也逐渐浮出水面。",
+        "rating": 7.0,
+        "voteCount": 2,
+        "popularity": 2.4028,
+        "releaseDate": "2022-03-18",
+        "lastUpdateDate": "2022-04-03",
+        "posterPath": "/nZEZPn6amgeFgif4VQY4ItqdU5x.jpg",
+        "backdropPath": "/1cVirDDWNBVMUV4VRD1xtYXWa3c.jpg",
+        "mediaType": "tv",
+        "genreTitle": "喜剧,剧情"
+      },
+      {
         "id": "156945",
         "type": "tmdb",
         "title": "瓦舍江湖",
@@ -3629,6 +3659,21 @@
         "genreTitle": "科幻奇幻,悬疑"
       },
       {
+        "id": "211986",
+        "type": "tmdb",
+        "title": "夫君，请自重",
+        "description": "　　作家沐小夕意外穿进自己的小说，完成十个任务才能返回。本以为十拿九稳，却不知男主秦川因此获得了能够听到沐小夕心声的能力。当男主同样也能预知剧情，故事的走向发生了翻天覆地的变化，两人的命运因此紧紧交织……",
+        "rating": 7.0,
+        "voteCount": 1,
+        "popularity": 1.8302,
+        "releaseDate": "2022-09-30",
+        "lastUpdateDate": "2022-10-20",
+        "posterPath": "/dQMNnrgFGkY9T0o6DIL0q2hClYt.jpg",
+        "backdropPath": "/2cAOj1RohoCYSXIq4PFALppkpIw.jpg",
+        "mediaType": "tv",
+        "genreTitle": "剧情"
+      },
+      {
         "id": "202711",
         "type": "tmdb",
         "title": "洛阳四千金",
@@ -3717,6 +3762,21 @@
         "backdropPath": "/h0pRz5rMq5gouiE2lasOImeqvKJ.jpg",
         "mediaType": "tv",
         "genreTitle": "喜剧"
+      },
+      {
+        "id": "154301",
+        "type": "tmdb",
+        "title": "师兄, 请按剧本来",
+        "description": "王小羽音乐考试挂科后躲在家里吃瓜追剧，却意外乱入剧中。通过随身带来的沙发和遥控器，一边无意打乱剧情，一边努力修正，最终与剧中角色建立了深厚的感情，最后发挥所学，通过音乐帮剧中角色赢得比赛，实现自我成长。",
+        "rating": 0.0,
+        "voteCount": 0,
+        "popularity": 3.9947,
+        "releaseDate": "2021-12-22",
+        "lastUpdateDate": "2022-01-13",
+        "posterPath": "/ouMHOmKyCYzyJe3eXYqDXmTi4pw.jpg",
+        "backdropPath": "/6g4CwHdH6QvIkzjw3wUUM93p1Za.jpg",
+        "mediaType": "tv",
+        "genreTitle": "喜剧,剧情,科幻奇幻"
       }
     ],
     "upcoming": [],
