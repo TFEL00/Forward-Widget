@@ -58,7 +58,7 @@ var WidgetMetadata = {
     title: "影视榜单",
     description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
-    version: "1.0.7",
+    version: "1.0.8",
     requiredVersion: "0.0.1",
     site: "https://t.me/TFEL000",
     
@@ -257,11 +257,24 @@ function platformHubSort(value, fallback) {
     return { date_desc: fallback, date_asc: fallback.replace(".desc", ".asc"), "popularity.desc": "popularity.desc", "vote_average.desc": "vote_average.desc", "vote_count.desc": "vote_count.desc" }[value] || fallback;
 }
 
-function mapPlatformHubItems(results, mediaType) {
-    return (results || []).filter(item => item && item.id && (item.title || item.name)).map(item => {
+async function mapPlatformHubItems(results, mediaType) {
+    const items = (results || []).filter(item => item && item.id && (item.title || item.name)).map(item => {
         const date = item.release_date || item.first_air_date || "";
         return { id: String(item.id), tmdbId: item.id, type: "tmdb", mediaType, title: item.title || item.name, releaseDate: date, posterPath: item.poster_path, backdropPath: item.backdrop_path, genreTitle: getGlobalGenreText(item.genre_ids), description: `${date}\n${item.overview || "暂无简介"}`, rating: item.vote_average };
     });
+
+    // 列表接口（discover）的剧照索引比详情接口滞后数小时，刚开播的剧常常只有海报没有剧照。
+    // 这里只对缺剧照的条目补一次详情请求；结果走 6 小时缓存，重复打开模块不会重复请求。
+    const missing = items.filter(i => !i.backdropPath);
+    if (missing.length) {
+        await Promise.all(missing.map(async i => {
+            try {
+                const detail = await fetchCalendarTmdb(i.tmdbId, i.mediaType);
+                if (detail && detail.backdrop_path) i.backdropPath = detail.backdrop_path;
+            } catch (e) {}
+        }));
+    }
+    return items;
 }
 
 async function loadPlatformHub(params = {}) {
@@ -279,7 +292,7 @@ async function loadPlatformHub(params = {}) {
             if (released) query["first_air_date.lte"] = date;
             if (upcoming) query["first_air_date.gte"] = date;
             const res = await Widget.tmdb.get("discover/tv", { params: query });
-            return mapPlatformHubItems(res.results, "tv");
+            return await mapPlatformHubItems(res.results, "tv");
         }
         const sort = platformHubSort(params.sort_by || "date_desc", "primary_release_date.desc");
         const query = { language, page, sort_by: sort, with_companies: params.with_companies || "3", include_adult: false, include_video: false };
@@ -287,7 +300,7 @@ async function loadPlatformHub(params = {}) {
         if (released) query["primary_release_date.lte"] = date;
         if (upcoming) query["primary_release_date.gte"] = date;
         const res = await Widget.tmdb.get("discover/movie", { params: query });
-        return mapPlatformHubItems(res.results, "movie");
+        return await mapPlatformHubItems(res.results, "movie");
     } catch (e) {
         console.error("[loadPlatformHub] 失败:", e.message || e);
         return [{ id: "platform-hub-error", type: "text", title: "加载失败", description: "TMDB平台筛选暂时不可用" }];
