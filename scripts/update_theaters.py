@@ -288,11 +288,22 @@ async def search_tmdb(session, item, cache):
                                 if d_resp.status == 200:
                                     d_data = await d_resp.json()
                                     last_update_date = d_data.get("last_air_date") or first_air
-                                    # 详情接口的剧照才是权威来源（搜索接口索引滞后）
+                                    # 详情接口的剧照比搜索接口可靠（搜索索引滞后）
                                     real_backdrop = d_data.get("backdrop_path")
-                                    if real_backdrop and not (backdrop_path and not used_poster_fallback):
+                                    if used_poster_fallback and not real_backdrop:
+                                        # 详情也没有时，直接查图片接口兜底
+                                        img_params = dict(detail_params)
+                                        img_params.pop("language", None)
+                                        async with session.get(f"{detail_url}/images", params=img_params,
+                                                               headers=headers) as i_resp:
+                                            if i_resp.status == 200:
+                                                bl = (await i_resp.json()).get("backdrops") or []
+                                                if bl:
+                                                    best = max(bl, key=lambda x: (x.get("width") or 0) * (x.get("height") or 0))
+                                                    real_backdrop = best.get("file_path")
+                                    if real_backdrop and (used_poster_fallback or not backdrop_path):
                                         if used_poster_fallback:
-                                            print(f"    ✅ [剧照] 「{title}」: 详情接口取到真实剧照，替换海报兜底")
+                                            print(f"    ✅ [剧照] 「{title}」: 取到真实剧照，替换海报兜底")
                                         backdrop_path = real_backdrop
                         except Exception as e:
                             pass # 详情获取失败不影响主体逻辑
