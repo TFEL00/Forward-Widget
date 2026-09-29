@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 import json
 import os
 import re
+import unicodedata
 import datetime
 
 # --- 配置区 ---
@@ -38,6 +39,20 @@ THEATERS = [
     { "name": "悬疑剧场", "id": "128400108" },
     { "name": "微尘剧场", "id": "161658331" }
 ]
+
+def normalize_title(text):
+    """标题比对前的归一化：只消除「书写形式」差异。
+
+    处理范围：全角/半角差异（NFKC）+ 各类标点与空白（Unicode 分类 P*/Z*）。
+    刻意不做任何字符替换或语序调整，因此不会把不同剧集（例如
+    「遮云」与「云遮月」）误判为同一部。
+    """
+    t = unicodedata.normalize("NFKC", text or "")
+    return "".join(
+        ch for ch in t
+        if not (unicodedata.category(ch).startswith("P") or unicodedata.category(ch).startswith("Z"))
+    ).lower()
+
 
 def clean_douban_title(raw_title):
     """去除标题中可能的括号、年份后缀，以及季数 (第X季/Season X)"""
@@ -151,11 +166,12 @@ async def search_tmdb(session, item, cache):
                 today_str = datetime.datetime.now(tz_bj).strftime("%Y-%m-%d")
                 
                 for res in results:
-                    tmdb_name = (res.get("name") or "").strip().lower()
-                    query_name = title.strip().lower()
+                    norm_query = normalize_title(title)
+                    norm_tmdb = normalize_title(res.get("name"))
                     
-                    # 宽松一点包含匹配，兼容部分副标题
-                    is_title_match = (query_name in tmdb_name or tmdb_name in query_name)
+                    # 宽松一点包含匹配，兼容部分副标题与标点写法差异
+                    is_title_match = bool(norm_query) and bool(norm_tmdb) and (
+                        norm_query in norm_tmdb or norm_tmdb in norm_query)
                     is_year_match = True
                     first_air = res.get("first_air_date")
                     
@@ -163,7 +179,7 @@ async def search_tmdb(session, item, cache):
                         is_year_match = first_air.startswith(year)
                         
                     if not is_title_match:
-                        print(f"    ⏭ [跳过] 「{title}」: 标题不匹配（TMDB=「{res.get('name')}」）")
+                        print(f"    ⏭ [跳过] 「{title}」: 标题不匹配（TMDB=「{res.get('name')}」｜归一化: {norm_query} vs {norm_tmdb}）")
                     elif not is_year_match:
                         print(f"    ⏭ [跳过] 「{title}」: 年份不匹配（豆列={year}，TMDB首播={first_air}）")
 
