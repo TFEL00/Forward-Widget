@@ -173,6 +173,7 @@ async def fetch_doulist_pages(session, theater):
             for item in items:
                 title_elem = item.select_one('.info .title')
                 meta_elem = item.select_one('.info .meta')
+                rank_elem = item.select_one('.info .rank span')
                 if title_elem:
                     raw_title = title_elem.text.strip()
                     clean_title = clean_douban_title(raw_title)
@@ -180,9 +181,19 @@ async def fetch_doulist_pages(session, theater):
                     if meta_elem:
                         meta_text = meta_elem.text.strip()
                         year_match = re.search(r'(\d{4})(?=-\d{2}-\d{2})', meta_text)
+                        if not year_match:
+                            # 未上映/未播出的条目 meta 里只有年份，没有具体日期
+                            year_match = re.search(r'(\d{4})', meta_text)
                         if year_match:
                             year = year_match.group(1)
-                    all_items.append({"title": clean_title, "year": year})
+                    # 豆瓣对未上映条目会标注类型：「尚未上映」= 电影，「尚未播出」= 剧集
+                    kind = None
+                    rank_text = rank_elem.text.strip() if rank_elem else ""
+                    if "上映" in rank_text:
+                        kind = "movie"
+                    elif "播出" in rank_text:
+                        kind = "tv"
+                    all_items.append({"title": clean_title, "year": year, "kind": kind})
             if len(items) < page_size:
                 break
             start += page_size
@@ -193,148 +204,184 @@ async def fetch_doulist_pages(session, theater):
             
     return {"items": all_items, "page_count": page_count}
 
-async def search_tmdb(session, item, cache):
-    """在 TMDB 中进行严格匹配"""
-    title = item['title']
-    year = item['year']
-    cache_key = f"{title}_{year}"
-    
-    if cache_key in cache: return cache[cache_key]
+async def search_tmdb_kind(session, item, cache, kind):
+    """在 TMDB 的指定类型（tv / movie）中严格匹配。
 
-    url = "https://api.themoviedb.org/3/search/tv"
+    匹配规则与原来的剧集逻辑保持一致（标题归一化 + 年份校验 + 海报与日期校验），
+    只是把接口路径、字段名、详情路径按类型区分，让电影也能被收录。
+    命中后不在这里判断是否已上映，交给 process_theater 分流 aired / upcoming。
+    """
+    is_movie = (kind == "movie")
+    label = "电影" if is_movie else "剧集"
+    title = item["title"]
+    year = item["year"]
+    date_field = "release_date" if is_movie else "first_air_date"
+    detail_date_field = "release_date" if is_movie else "last_air_date"
+    year_param = "primary_release_year" if is_movie else "first_air_date_year"
+    cache_key = f"{kind}:{title}_{year}"
+
+    if cache_key in cache:
+        return cache[cache_key]
+
+    url = f"https://api.themoviedb.org/3/search/{kind}"
     headers = {"accept": "application/json"}
     params = {"query": title, "language": "zh-CN"}
-    
+
     if TMDB_API_KEY.startswith("eyJ"):
         headers["Authorization"] = f"Bearer {TMDB_API_KEY}"
     else:
         params["api_key"] = TMDB_API_KEY
 
-    if year: params["first_air_date_year"] = year
+    if year:
+        params[year_param] = year
 
     try:
         async with session.get(url, params=params, headers=headers) as resp:
-            if resp.status == 200:
-                data = await resp.json()
-                results = data.get("results", [])
-                if not results:
-                    print(f"    ⚠️ [未匹配] 「{title}」（{year or '无年份'}）: TMDB 搜索无结果")
-                
-                # 获取当天的北京时间，用于拦截未开播的剧
-                tz_bj = datetime.timezone(datetime.timedelta(hours=8))
-                today_str = datetime.datetime.now(tz_bj).strftime("%Y-%m-%d")
-                
-                for res in results:
-                    norm_query = normalize_title(title)
-                    norm_tmdb = normalize_title(res.get("name"))
-                    
-                    # 匹配规则：完全相同直接命中；否则仅当较短一方不少于 3 个字时
-                    # 才允许包含匹配，避免「深渊」误配「深渊无间」这类短标题误伤。
-                    if not norm_query or not norm_tmdb:
-                        is_title_match = False
-                    elif norm_query == norm_tmdb:
-                        is_title_match = True
-                    else:
-                        shorter = min(len(norm_query), len(norm_tmdb))
-                        is_title_match = shorter >= 3 and (
-                            norm_query in norm_tmdb or norm_tmdb in norm_query)
-                    is_year_match = True
-                    first_air = res.get("first_air_date")
-                    
-                    if year and first_air:
-                        is_year_match = first_air.startswith(year)
-                        
-                    if not is_title_match:
-                        print(f"    ⏭ [跳过] 「{title}」: 标题不匹配（TMDB=「{res.get('name')}」｜归一化: {norm_query} vs {norm_tmdb}）")
-                    elif not is_year_match:
-                        print(f"    ⏭ [跳过] 「{title}」: 年份不匹配（豆列={year}，TMDB首播={first_air}）")
+            if resp.status != 200:
+                return None
+            results = (await resp.json()).get("results", [])
+            if not results:
+                print(f"    ⚠️ [未匹配] 「{title}」（{year or '无年份'}）: TMDB {label}搜索无结果")
 
-                    if is_title_match and is_year_match:
-                        # 🔴 核心拦截逻辑 1：检查是否缺失ID和海报
-                        tmdb_id = res.get("id")
-                        poster_path = res.get("poster_path")
-                        backdrop_path = res.get("backdrop_path")
-                        
-                        if not tmdb_id or not poster_path:
-                            print(f"    ⏭ [跳过] 「{title}」: TMDB 缺 id 或海报")
-                            continue
+            tz_bj = datetime.timezone(datetime.timedelta(hours=8))
+            today_str = datetime.datetime.now(tz_bj).strftime("%Y-%m-%d")
 
-                        # 剧照缺失时用海报兜底，避免刚开播的新剧被整条丢弃。
-                        # 注意：TMDB 搜索接口的索引会滞后，新剧常常搜不到剧照，
-                        # 下面请求详情接口后会再补正一次。
-                        used_poster_fallback = False
-                        if not backdrop_path:
-                            print(f"    ℹ️ [兜底] 「{title}」: 搜索接口暂缺剧照，先用海报")
-                            backdrop_path = poster_path
-                            used_poster_fallback = True
-                            
-                        # 🔴 核心拦截逻辑 2：检查是否未开播
-                        if not first_air:
-                            print(f"    ⏭ [跳过] 「{title}」: TMDB 未填写首播日期")
-                            continue
-                        if first_air > today_str:
-                            print(f"    ⏭ [跳过] 「{title}」: 尚未开播（TMDB首播={first_air}，今天={today_str}）")
-                            continue
+            for res in results:
+                res_title = res.get("title") if is_movie else res.get("name")
+                norm_query = normalize_title(title)
+                norm_tmdb = normalize_title(res_title)
 
-                        # 🔴 新增：拿着 id 去请求详情，获取最新更新日期 (last_air_date)
-                        detail_url = f"https://api.themoviedb.org/3/tv/{tmdb_id}"
-                        detail_params = {"language": "zh-CN"}
-                        if not TMDB_API_KEY.startswith("eyJ"):
-                            detail_params["api_key"] = TMDB_API_KEY
-                            
-                        last_update_date = first_air # 默认用首播日期兜底
-                        try:
-                            async with session.get(detail_url, params=detail_params, headers=headers) as d_resp:
-                                if d_resp.status == 200:
-                                    d_data = await d_resp.json()
-                                    last_update_date = d_data.get("last_air_date") or first_air
-                                    # 详情接口的剧照比搜索接口可靠（搜索索引滞后）
-                                    real_backdrop = d_data.get("backdrop_path")
-                                    if used_poster_fallback and not real_backdrop:
-                                        # 详情也没有时，直接查图片接口兜底
-                                        img_params = dict(detail_params)
-                                        img_params.pop("language", None)
-                                        async with session.get(f"{detail_url}/images", params=img_params,
-                                                               headers=headers) as i_resp:
-                                            if i_resp.status == 200:
-                                                bl = (await i_resp.json()).get("backdrops") or []
-                                                if bl:
-                                                    best = max(bl, key=lambda x: (x.get("width") or 0) * (x.get("height") or 0))
-                                                    real_backdrop = best.get("file_path")
-                                    if real_backdrop and (used_poster_fallback or not backdrop_path):
-                                        if used_poster_fallback:
-                                            print(f"    ✅ [剧照] 「{title}」: 取到真实剧照，替换海报兜底")
-                                        backdrop_path = real_backdrop
-                        except Exception as e:
-                            pass # 详情获取失败不影响主体逻辑
+                # 匹配规则：完全相同直接命中；否则仅当较短一方不少于 3 个字时
+                # 才允许包含匹配，避免「深渊」误配「深渊无间」这类短标题误伤。
+                if not norm_query or not norm_tmdb:
+                    is_title_match = False
+                elif norm_query == norm_tmdb:
+                    is_title_match = True
+                else:
+                    shorter = min(len(norm_query), len(norm_tmdb))
+                    is_title_match = shorter >= 3 and (
+                        norm_query in norm_tmdb or norm_tmdb in norm_query)
 
-                        genre_ids = res.get("genre_ids", [])
-                        genre_names = ",".join([GENRE_MAP.get(gid) for gid in genre_ids if GENRE_MAP.get(gid)])
-                        
-                        info = {
-                            "id": str(tmdb_id),
-                            "type": "tmdb",
-                            "title": res.get("name"),
-                            "description": res.get("overview"),
-                            "rating": res.get("vote_average"),
-                            "voteCount": res.get("vote_count"),
-                            "popularity": res.get("popularity"),
-                            "releaseDate": first_air,
-                            "lastUpdateDate": last_update_date, # 🔴 新增：这里保存给前端排序用
-                            "posterPath": poster_path,
-                            "backdropPath": backdrop_path,
-                            "mediaType": "tv",
-                            "genreTitle": genre_names
-                        }
-                        cache[cache_key] = info
-                        return info
-    except: pass
+                release_date = res.get(date_field)
+                is_year_match = True
+                if year and release_date:
+                    is_year_match = release_date.startswith(year)
+
+                if not is_title_match:
+                    print(f"    ⏭ [跳过] 「{title}」({label}): 标题不匹配（TMDB=「{res_title}」｜归一化: {norm_query} vs {norm_tmdb}）")
+                elif not is_year_match:
+                    print(f"    ⏭ [跳过] 「{title}」({label}): 年份不匹配（豆列={year}，TMDB={release_date}）")
+
+                if not (is_title_match and is_year_match):
+                    continue
+
+                tmdb_id = res.get("id")
+                poster_path = res.get("poster_path")
+                backdrop_path = res.get("backdrop_path")
+
+                if not tmdb_id or not poster_path:
+                    print(f"    ⏭ [跳过] 「{title}」({label}): TMDB 缺 id 或海报")
+                    continue
+
+                if not release_date:
+                    print(f"    ⏭ [跳过] 「{title}」({label}): TMDB 未填写{'上映' if is_movie else '首播'}日期")
+                    continue
+
+                # 剧照缺失时用海报兜底，避免刚开播的新剧被整条丢弃。
+                used_poster_fallback = False
+                if not backdrop_path:
+                    print(f"    ℹ️ [兜底] 「{title}」({label}): 搜索接口暂缺剧照，先用海报")
+                    backdrop_path = poster_path
+                    used_poster_fallback = True
+
+                # 拿 id 请求详情：取最新更新日期，并补正剧照
+                detail_url = f"https://api.themoviedb.org/3/{kind}/{tmdb_id}"
+                detail_params = {"language": "zh-CN"}
+                if not TMDB_API_KEY.startswith("eyJ"):
+                    detail_params["api_key"] = TMDB_API_KEY
+
+                last_update_date = release_date
+                try:
+                    async with session.get(detail_url, params=detail_params, headers=headers) as d_resp:
+                        if d_resp.status == 200:
+                            d_data = await d_resp.json()
+                            last_update_date = d_data.get(detail_date_field) or release_date
+                            real_backdrop = d_data.get("backdrop_path")
+                            if used_poster_fallback and not real_backdrop:
+                                img_params = dict(detail_params)
+                                img_params.pop("language", None)
+                                async with session.get(f"{detail_url}/images", params=img_params,
+                                                       headers=headers) as i_resp:
+                                    if i_resp.status == 200:
+                                        bl = (await i_resp.json()).get("backdrops") or []
+                                        if bl:
+                                            best = max(bl, key=lambda x: (x.get("width") or 0) * (x.get("height") or 0))
+                                            real_backdrop = best.get("file_path")
+                            if real_backdrop and (used_poster_fallback or not backdrop_path):
+                                if used_poster_fallback:
+                                    print(f"    ✅ [剧照] 「{title}」({label}): 取到真实剧照，替换海报兜底")
+                                backdrop_path = real_backdrop
+                except Exception:
+                    pass  # 详情获取失败不影响主体逻辑
+
+                genre_ids = res.get("genre_ids", [])
+                genre_names = ",".join([GENRE_MAP.get(gid) for gid in genre_ids if GENRE_MAP.get(gid)])
+
+                info = {
+                    "id": str(tmdb_id),
+                    "type": "tmdb",
+                    "title": res_title,
+                    "description": res.get("overview"),
+                    "rating": res.get("vote_average"),
+                    "voteCount": res.get("vote_count"),
+                    "popularity": res.get("popularity"),
+                    "releaseDate": release_date,
+                    "lastUpdateDate": last_update_date,
+                    "posterPath": poster_path,
+                    "backdropPath": backdrop_path,
+                    "mediaType": kind,
+                    "genreTitle": genre_names
+                }
+                if release_date > today_str:
+                    print(f"    🕐 [待{'上映' if is_movie else '开播'}] 「{title}」({label}): {release_date}，归入即将推出")
+                cache[cache_key] = info
+                return info
+    except Exception:
+        pass
     return None
+
+
+async def search_tmdb(session, item, cache):
+    """按豆瓣给出的类型提示选择要查的 TMDB 接口。
+
+    - 豆瓣标「尚未上映」→ 只查电影；标「尚未播出」→ 只查剧集
+    - 已上映/已播出的条目豆瓣不给类型提示，先查剧集、查不到再查电影，
+      这样既不影响原有剧集匹配，又能把正午阳光出品的电影收进来。
+    """
+    hint = item.get("kind")
+    if hint == "movie":
+        kinds = ["movie"]
+    elif hint == "tv":
+        kinds = ["tv"]
+    else:
+        kinds = ["tv", "movie"]
+
+    for kind in kinds:
+        info = await search_tmdb_kind(session, item, cache, kind)
+        if info:
+            if kind == "movie" and hint is None:
+                print(f"    🎬 [电影] 「{item['title']}」: 剧集接口无匹配，按电影收录")
+            return info
+    return None
+
 
 async def process_theater(session, theater, cache):
     douban_data = await fetch_doulist_pages(session, theater)
     items = douban_data["items"]
-    
+
+    tz_bj = datetime.timezone(datetime.timedelta(hours=8))
+    today_str = datetime.datetime.now(tz_bj).strftime("%Y-%m-%d")
+
     shows = []
     # 控制并发，防止 TMDB 报错
     for i in range(0, len(items), 5):
@@ -344,25 +391,38 @@ async def process_theater(session, theater, cache):
         for tmdb_info in results:
             if tmdb_info:
                 shows.append(tmdb_info)
-        await asyncio.sleep(0.3) # ⚠️ 稍微放慢一点点，因为多了二次详情请求
+        await asyncio.sleep(0.3)  # ⚠️ 稍微放慢一点点，因为多了二次详情请求
 
-    # 经过 search_tmdb 过滤，能留下的 100% 都是已开播的数据，所以 upcoming 恒定为空数组即可
-    aired = shows
-    upcoming = []
-            
+    # 同一部作品可能被豆瓣拆成多条（分季、重名等），按 TMDB id 去重，避免重复卡片
+    deduped = []
+    seen_ids = set()
+    for show in shows:
+        if show["id"] in seen_ids:
+            print(f"    ♻️ [去重] 「{show['title']}」: 同一条目重复出现，只保留一张卡片")
+            continue
+        seen_ids.add(show["id"])
+        deduped.append(show)
+
+    # 按 TMDB 日期分流：已上映/已播出进 aired，未上映/未播出进 upcoming
+    aired = [s for s in deduped if (s.get("releaseDate") or "") <= today_str]
+    upcoming = sorted(
+        [s for s in deduped if (s.get("releaseDate") or "") > today_str],
+        key=lambda x: x.get("releaseDate") or "9999-99-99")
+
     # 已开播按时间倒序排列 (最新的在前面)
     aired.sort(key=lambda x: x.get("releaseDate") or "0000-00-00", reverse=True)
-    
-    print(f"✅ [{theater['name']}] 处理完成: 共发现 {len(items)} 部，完美匹配 {len(shows)} 部 (全部为已播双图精品)")
-    
+
+    print(f"✅ [{theater['name']}] 处理完成: 共发现 {len(items)} 部，匹配 {len(deduped)} 部（已开播 {len(aired)} / 即将推出 {len(upcoming)}，电影 {sum(1 for s in deduped if s.get('mediaType') == 'movie')} 部）")
+
     return {
         theater["name"]: {
             "aired": aired,
-            "upcoming": upcoming, # 保持结构兼容前端，即使为空
+            "upcoming": upcoming,  # 未上映/未播出的条目，前端「即将推出」页签使用
             "totalItems": len(items),
             "totalPages": douban_data["page_count"]
         }
     }
+
 
 async def main():
     if not TMDB_API_KEY:
