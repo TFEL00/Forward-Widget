@@ -33,7 +33,7 @@
     {
       "id": "forward.hongguo.full",
       "title": "红果短剧",
-      "description": "配置自己的 API 地址，浏览、搜索和播放红果短剧",
+      "description": "短剧漫剧榜单全收录一键搜索即点即播",
       "requiredVersion": "0.0.1",
       "version": "2.3.7",
       "author": "balge",
