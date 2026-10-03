@@ -33,9 +33,9 @@
     {
       "id": "forward.hongguo.full",
       "title": "红果短剧",
-      "description": "短剧漫剧榜单全收录一键搜索即点即播",
+      "description": "海量短剧漫剧榜单，一键搜索即点即播",
       "requiredVersion": "0.0.1",
-      "version": "2.3.7",
+      "version": "2.3.8",
       "author": "balge",
       "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/hongguo.js"
     }

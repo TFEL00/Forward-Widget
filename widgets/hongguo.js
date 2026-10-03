@@ -2,9 +2,9 @@
 WidgetMetadata = {
   id: "forward.hongguo.full",
   title: "红果短剧",
-  version: "2.3.7",
+  version: "2.3.8",
   requiredVersion: "0.0.1",
-  description: "配置自己的 API 地址，浏览、搜索和播放红果短剧",
+  description: "海量短剧漫剧榜单，一键搜索即点即播",
   author: "balge",
   site: "",
   detailCacheDuration: 180,
