@@ -1,6 +1,9 @@
 name: Update Anime MAL Map
 
 on:
+  push:
+    paths:
+      - '.github/workflows/update-anime-map.yml'
   schedule:
     - cron: '0 3 * * *'        # 每天 11:00（北京时间）
   workflow_dispatch:
