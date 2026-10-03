@@ -1,0 +1,48 @@
+name: Update Anime MAL Map
+
+on:
+  schedule:
+    - cron: '0 3 * * *'        # 每天 11:00（北京时间）
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-anime-map-main
+  cancel-in-progress: false
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install aiohttp
+
+      - name: Update anime MAL map
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+        run: python scripts/update_anime_map.py
+
+      - name: Commit anime MAL map
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/anime-mal-map.json
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: update anime MAL map"
+          git fetch origin main
+          git rebase origin/main
+          git push origin HEAD:main
