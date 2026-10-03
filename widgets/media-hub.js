@@ -58,7 +58,7 @@ var WidgetMetadata = {
     title: "影视榜单",
     description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
-    version: "1.0.17",
+    version: "1.0.18",
     requiredVersion: "0.0.1",
     site: "https://t.me/TFEL000",
     
@@ -1142,8 +1142,31 @@ async function loadAniListRanking(params = {}) {
     } catch (e) { return []; }
 }
 
+// MAL 榜单的预生成映射（工作流每天刷新 data/anime-mal-map.json）。
+// 命中时零搜索请求：加载从「1 次 Jikan + 60+ 次 TMDB 搜索」降到「1 次文件请求」。
+// 文件缺失或异常时，回落到下面的实时抓取路径。
+const MAL_MAP_FILE = "anime-mal-map.json";
+
+function buildMalCachedItem(rec) {
+    return buildItem({
+        id: rec.tmdbId, tmdbId: rec.tmdbId, type: rec.mediaType || "tv",
+        title: rec.title, date: rec.date, poster: rec.poster, backdrop: rec.backdrop,
+        rating: rec.rating, genreText: getGlobalGenreText(rec.genreIds), desc: rec.overview
+    });
+}
+
 async function loadMalRanking(params = {}) {
-    const { sort_by = "airing", page = 1 } = params; 
+    const { sort_by = "airing", page = 1 } = params;
+
+    const mapData = await PlatformTheaterUtils.fetch(MAL_MAP_FILE);
+    if (mapData !== PlatformTheaterUtils.emptyTips) {
+        const list = mapData?.lists?.[sort_by];
+        if (Array.isArray(list) && list.length) {
+            return PlatformTheaterUtils.paginate(dedupeByTmdbId(list.map(buildMalCachedItem)), page);
+        }
+    }
+
+    // ↓ 兜底：实时抓 Jikan 榜单并逐条搜索 TMDB（映射文件不可用时才会走到这里）
     let apiParams = { page: page };
     if (sort_by === "airing") apiParams.filter = "airing"; 
 
