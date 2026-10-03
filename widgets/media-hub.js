@@ -58,7 +58,7 @@ var WidgetMetadata = {
     title: "影视榜单",
     description: "聚合影视、动漫、综艺等众多平台榜单",
     author: "TFEL",
-    version: "1.0.16",
+    version: "1.0.17",
     requiredVersion: "0.0.1",
     site: "https://t.me/TFEL000",
     
@@ -1062,6 +1062,24 @@ async function sanitizeAndEnsureTmdb(items) {
     return results.filter(Boolean);
 }
 
+// 第三方榜单（MAL / AniList / Bangumi）常把同一部作品拆成多条
+// （各季、剧场版、总集篇等），这些条目匹配到 TMDB 后可能落到同一条目上，
+// 于是同一张卡片重复出现（例如 MAL 总榜里 8 条「银魂」）。
+// 这里按 TMDB id 去重：列表本身有序，只保留排名靠前的那一条。
+function dedupeByTmdbId(items) {
+    if (!Array.isArray(items)) return [];
+    const seen = new Set();
+    return items.filter(item => {
+        if (!item) return false;
+        const key = item.tmdbId ?? item.id;
+        if (key === undefined || key === null || key === "") return true;
+        const k = String(key);
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+    });
+}
+
 async function loadBangumiCalendar(params = {}) {
     const { sort_by = "today", page = 1 } = params;
     let targetDayId = parseInt(sort_by);
@@ -1099,7 +1117,7 @@ async function loadBangumiCalendar(params = {}) {
         });
         
         const results = await Promise.all(promises);
-        return results.filter(Boolean);
+        return dedupeByTmdbId(results);
     } catch (e) { return []; }
 }
 
@@ -1120,7 +1138,7 @@ async function loadAniListRanking(params = {}) {
             return buildItem({ id: tmdbItem.id, tmdbId: tmdbItem.id, type: "tv", title: tmdbItem.name || tmdbItem.title, date: tmdbItem.first_air_date, poster: tmdbItem.poster_path, backdrop: tmdbItem.backdrop_path, rating: tmdbItem.vote_average?.toFixed(1), genreText: getGlobalGenreText(tmdbItem.genre_ids), desc: tmdbItem.overview });
         });
         const results = await Promise.all(promises);
-        return results.filter(Boolean);
+        return dedupeByTmdbId(results);
     } catch (e) { return []; }
 }
 
@@ -1138,7 +1156,7 @@ async function loadMalRanking(params = {}) {
             return buildItem({ id: tmdbItem.id, tmdbId: tmdbItem.id, type: "tv", title: tmdbItem.name || tmdbItem.title, date: tmdbItem.first_air_date, poster: tmdbItem.poster_path, backdrop: tmdbItem.backdrop_path, rating: tmdbItem.vote_average?.toFixed(1), genreText: getGlobalGenreText(tmdbItem.genre_ids), desc: tmdbItem.overview });
         });
         const results = await Promise.all(promises);
-        return results.filter(Boolean);
+        return dedupeByTmdbId(results);
     } catch (e) { return []; }
 }
 
