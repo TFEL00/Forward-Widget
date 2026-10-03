@@ -8,7 +8,7 @@
       "title": "影视榜单",
       "description": "聚合影视、动漫、综艺等众多平台榜单",
       "requiredVersion": "0.0.1",
-      "version": "1.0.16",
+      "version": "1.0.17",
       "author": "TFEL",
       "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/media-hub.js"
     },
@@ -29,15 +29,6 @@
       "version": "1.21.3",
       "author": "huangxd",
       "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/auto-danmu-v2.js"
-    },
-    {
-      "id": "forward.hongguo.full",
-      "title": "红果短剧",
-      "description": "海量短剧漫剧榜单，一键搜索即点即播",
-      "requiredVersion": "0.0.1",
-      "version": "2.3.8",
-      "author": "balge",
-      "url": "https://raw.githubusercontent.com/TFEL00/Forward-Widget/refs/heads/main/widgets/hongguo.js"
     }
   ]
 }
